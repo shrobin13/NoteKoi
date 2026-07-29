@@ -1,0 +1,47 @@
+import * as adminService from "./admin.service.js";
+import { success, getParam } from "../../types/index.js";
+export async function assignSubAdmin(req, res, next) {
+    try {
+        const result = await adminService.assignSubAdmin(req.body, req.user.id);
+        res.status(201).json(success(result, "Sub Admin assigned successfully"));
+    }
+    catch (err) {
+        next(err);
+    }
+}
+export async function demoteSubAdmin(req, res, next) {
+    try {
+        await adminService.demoteSubAdmin(getParam(req, "userId"), req.user.id);
+        res.json(success(null, "Sub Admin demoted successfully"));
+    }
+    catch (err) {
+        next(err);
+    }
+}
+export async function transferOwnership(req, res, next) {
+    try {
+        await adminService.transferOwnership(req.body, req.user.id);
+        res.json(success(null, "Ownership transferred successfully"));
+    }
+    catch (err) {
+        next(err);
+    }
+}
+export async function getPlatformStats(req, res, next) {
+    try {
+        const stats = await adminService.getPlatformStats();
+        res.json(success(stats));
+    }
+    catch (err) {
+        next(err);
+    }
+}
+export async function listSubAdmins(req, res, next) {
+    try {
+        const list = await adminService.listSubAdmins();
+        res.json(success(list));
+    }
+    catch (err) {
+        next(err);
+    }
+}

@@ -1,0 +1,19 @@
+import { Role, VerificationStatus } from "../../generated/prisma/index.js";
+
+// Augment Express Request with the authenticated user payload.
+// This is the canonical shape attached by the `authenticate` middleware.
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        role: Role;
+        verificationStatus: VerificationStatus;
+        collegeId: string;
+        classroomUnitId: string | null;
+      };
+    }
+  }
+}
+
+export {};
