@@ -13,6 +13,10 @@ import crRouter from "./modules/cr/cr.router.js";
 import verificationRouter from "./modules/verification/verification.router.js";
 import resourcesRouter from "./modules/resources/resources.router.js";
 
+import noticesRouter from "./modules/notices/notices.router.js";
+import discussionsRouter from "./modules/discussions/discussions.router.js";
+import sharesRouter from "./modules/shares/shares.router.js";
+
 export function createApp(): express.Application {
   const app = express();
 
@@ -42,6 +46,9 @@ export function createApp(): express.Application {
   app.use("/api/cr", crRouter);
   app.use("/api/verification", verificationRouter);
   app.use("/api/resources", resourcesRouter);
+  app.use("/api/notices", noticesRouter);
+  app.use("/api/discussions", discussionsRouter);
+  app.use("/api/shares", sharesRouter);
 
   // 404 handler for unknown routes
   app.use((_req, res) => {

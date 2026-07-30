@@ -129,6 +129,52 @@ export interface AdminStats {
   pendingVerifications: number;
 }
 
+// ── Notices ───────────────────────────────────────────────────────────────
+export interface Notice {
+  id: string;
+  title: string;
+  content: string;
+  classroomUnitId: string;
+  authorId: string;
+  author?: { id: string; name: string; email: string; role: Role };
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// ── Discussions ───────────────────────────────────────────────────────────
+export interface DiscussionGroup {
+  id: string;
+  name: string;
+  classroomUnitId: string;
+  courseId?: string;
+  createdById: string;
+  course?: { id: string; name: string };
+  createdBy?: { id: string; name: string };
+  memberships?: Array<{ id: string; userId: string; user?: User }>;
+  _count?: { messages: number; memberships: number };
+  createdAt: string;
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  groupId: string;
+  senderId: string;
+  sender?: { id: string; name: string; email: string; role: Role };
+  createdAt: string;
+}
+
+// ── Personal Shares ───────────────────────────────────────────────────────
+export interface PersonalShare {
+  id: string;
+  content: string;
+  classroomUnitId: string;
+  authorId: string;
+  author?: { id: string; name: string; email: string; role: Role };
+  recipients?: Array<{ id: string; recipientId: string; recipient?: User }>;
+  createdAt: string;
+}
+
 // ── Pagination ────────────────────────────────────────────────────────────
 export interface PaginationMeta {
   page: number;
