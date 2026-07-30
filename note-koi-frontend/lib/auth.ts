@@ -1,6 +1,20 @@
 import apiClient from "./api";
 import type { AuthResponse, AuthTokens, User } from "./types";
 
+function normalizeAuthResponse(payload: Partial<AuthResponse> & { accessToken?: string; refreshToken?: string }): AuthResponse {
+  const accessToken = payload.tokens?.accessToken ?? payload.accessToken;
+  const refreshToken = payload.tokens?.refreshToken ?? payload.refreshToken;
+
+  if (!payload.user || !accessToken || !refreshToken) {
+    throw new Error("Invalid auth response from server");
+  }
+
+  return {
+    user: payload.user,
+    tokens: { accessToken, refreshToken },
+  };
+}
+
 export async function register(payload: {
   name: string;
   email: string;
@@ -9,7 +23,7 @@ export async function register(payload: {
   classroomUnitId: string;
 }): Promise<AuthResponse> {
   const { data } = await apiClient.post("/api/auth/register", payload);
-  return data.data as AuthResponse;
+  return normalizeAuthResponse(data.data as Partial<AuthResponse> & { accessToken?: string; refreshToken?: string });
 }
 
 export async function login(payload: {
@@ -17,7 +31,7 @@ export async function login(payload: {
   password: string;
 }): Promise<AuthResponse> {
   const { data } = await apiClient.post("/api/auth/login", payload);
-  return data.data as AuthResponse;
+  return normalizeAuthResponse(data.data as Partial<AuthResponse> & { accessToken?: string; refreshToken?: string });
 }
 
 export async function logout(): Promise<void> {
