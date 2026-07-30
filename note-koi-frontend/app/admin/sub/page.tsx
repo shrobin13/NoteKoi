@@ -30,7 +30,7 @@ export default function SubAdminDashboardPage() {
   const [showPromoteModal, setShowPromoteModal] = useState(false);
   const [promoteUserId, setPromoteUserId] = useState("");
   const [promoteUnitId, setPromoteUnitId] = useState("");
-  const [promoteSeat, setPromoteSeat] = useState<CrSeat>("PRIMARY");
+  const [promoteSeat, setPromoteSeat] = useState<CrSeat>("MAIN");
   const [promoteError, setPromoteError] = useState("");
 
   // Expanded classroom unit (accordion)
@@ -53,8 +53,8 @@ export default function SubAdminDashboardPage() {
 
   // All classroom units (backend scopes to sub admin's college)
   const { data: allUnits, isLoading: loadingUnits } = useQuery({
-    queryKey: ["classroom-units"],
-    queryFn: getClassroomUnits,
+    queryKey: ["classroom-units", user?.collegeId],
+    queryFn: () => getClassroomUnits(user?.collegeId),
     enabled: canAct,
   });
 
@@ -98,7 +98,7 @@ export default function SubAdminDashboardPage() {
 
   const pending = pendingData?.data ?? [];
   const totalPending = pendingData?.meta?.total ?? 0;
-  const units = allUnits ?? [];
+  const units: any[] = (Array.isArray(allUnits) ? allUnits : (allUnits as any)?.data) ?? [];
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 280, damping: 28 }}>
@@ -315,8 +315,8 @@ export default function SubAdminDashboardPage() {
                                     <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>{cr.name}</p>
                                     <p style={{ fontSize: "0.72rem", color: "var(--text-subtle)" }}>{cr.email}</p>
                                   </div>
-                                  <Badge variant={cr.crSeat === "PRIMARY" ? "CR" : "admin"}>
-                                    {cr.crSeat === "PRIMARY" ? "Main CR" : "Co-CR"}
+                                  <Badge variant={cr.crSeat === "MAIN" ? "CR" : "admin"}>
+                                    {cr.crSeat === "MAIN" ? "Main CR" : "Co-CR"}
                                   </Badge>
                                   <button
                                     onClick={() => handleDemote(cr.id)}
@@ -384,8 +384,8 @@ export default function SubAdminDashboardPage() {
                     onChange={(e) => setPromoteSeat(e.target.value as CrSeat)}
                     className="input-field"
                   >
-                    <option value="PRIMARY">Main CR (Primary)</option>
-                    <option value="SECONDARY">Co-CR (Secondary)</option>
+                    <option value="MAIN">Main CR (Primary)</option>
+                    <option value="CO">Co-CR (Secondary)</option>
                   </select>
                 </div>
 

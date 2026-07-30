@@ -43,7 +43,7 @@ export default function DashboardPage() {
     enabled: user?.role === "CR" || user?.role === "SUB_ADMIN" || user?.role === "OWNER_ADMIN",
   });
 
-  const isUnverified = user?.status === "UNVERIFIED";
+  const isUnverified = user?.verificationStatus === "PENDING";
   const isCR = user?.role === "CR";
   const resources = resourcesData?.data ?? [];
   const pendingCount = pendingData?.meta?.total ?? 0;
@@ -140,9 +140,9 @@ export default function DashboardPage() {
           {
             icon: <CheckCircle size={20} />,
             label: "Account Status",
-            value: user?.status === "VERIFIED" ? "Verified" : "Pending",
+            value: user?.verificationStatus === "VERIFIED" ? "Verified" : "Pending",
             sub: user?.role?.replace("_", " ").toLowerCase() ?? "student",
-            color: user?.status === "VERIFIED" ? "var(--default-color)" : "var(--accent)",
+            color: user?.verificationStatus === "VERIFIED" ? "var(--default-color)" : "var(--accent)",
           },
         ].map((stat, i) =>
           loadingResources ? (

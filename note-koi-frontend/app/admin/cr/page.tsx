@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, Clock, Users, Plus, Upload, Trash2, X, FileText, XCircle, Lock, Send } from "lucide-react";
 import { getPendingVerifications, approveVerification, rejectVerification } from "@/lib/verification";
 import { getCRs } from "@/lib/admin";
 import { createResource, getUnitResources, deleteResource } from "@/lib/resources";
+import { getClassroomUnit } from "@/lib/hierarchy";
 import { createShare } from "@/lib/shares";
 import { useAuthStore } from "@/store/auth";
 import { useUIStore } from "@/store/ui";
@@ -22,6 +23,7 @@ export default function CRDashboardPage() {
   const queryClient = useQueryClient();
 
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadStep, setUploadStep] = useState(1);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<ResourceCategory>("Notes");
   const [visibility, setVisibility] = useState<Visibility>("PRIVATE");
@@ -59,6 +61,12 @@ export default function CRDashboardPage() {
     enabled: !!classroomUnitId,
   });
 
+  const { data: classroomUnitData } = useQuery({
+    queryKey: ["classroom-unit", classroomUnitId],
+    queryFn: () => getClassroomUnit(classroomUnitId),
+    enabled: !!classroomUnitId,
+  });
+
   const { mutate: approve, isPending: approving } = useMutation({
     mutationFn: (requestId: string) => approveVerification(requestId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pending-verifications"] }),
@@ -72,17 +80,19 @@ export default function CRDashboardPage() {
   const { mutate: handleUpload, isPending: uploading } = useMutation({
     mutationFn: () =>
       createResource({
-        title,
+        title: title.trim() || `${category} resource`,
         category,
         visibility,
         fileId: fileId || `drive-file-${Date.now()}`,
         fileUrl: fileUrl || "https://drive.google.com",
         previewUrl: previewUrl || undefined,
+        courseId: classroomUnitData?.session?.course?.id,
         classroomUnitId,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unit-resources", classroomUnitId] });
       setShowUploadModal(false);
+      setUploadStep(1);
       setTitle("");
       setFileId("");
       setFileUrl("");
@@ -118,6 +128,27 @@ export default function CRDashboardPage() {
   const pending = pendingData?.data ?? [];
   const total = pendingData?.meta?.total ?? 0;
   const unitResources = unitResourcesData?.data ?? [];
+  const defaultBranches: ResourceCategory[] = ["Lecture", "Notes", "PYQ", "Tutorial", "Software", "Other"];
+
+  const groupedResources = useMemo(() =>
+    defaultBranches.map((branch) => ({
+      branch,
+      resources: unitResources.filter((resource) => resource.category === branch),
+    })).filter((group) => group.resources.length > 0),
+    [defaultBranches, unitResources],
+  );
+
+  const openUploadModal = (branch: ResourceCategory = "Notes") => {
+    setCategory(branch);
+    setTitle("");
+    setVisibility("PRIVATE");
+    setFileId("");
+    setFileUrl("");
+    setPreviewUrl("");
+    setUploadStep(1);
+    setUploadError("");
+    setShowUploadModal(true);
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 280, damping: 28 }}>
@@ -131,7 +162,7 @@ export default function CRDashboardPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <Button variant="accent" icon={<Upload size={16} />} onClick={() => setShowUploadModal(true)}>
+          <Button variant="accent" icon={<Upload size={16} />} onClick={() => openUploadModal("Notes")}>
             Upload Resource
           </Button>
           <Button variant="secondary" icon={<Lock size={16} />} onClick={() => setShowShareModal(true)}>
@@ -219,31 +250,67 @@ export default function CRDashboardPage() {
           <Card padding="lg" style={{ textAlign: "center" }}>
             <FileText size={32} style={{ color: "var(--text-subtle)", margin: "0 auto 12px" }} />
             <p style={{ color: "var(--text-muted)", fontSize: "0.88rem" }}>
-              No resources uploaded yet. Click "Upload Resource" above to add course materials.
+              No resources uploaded yet. Use the default branches below to add course materials quickly.
             </p>
           </Card>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {unitResources.map((res) => (
-              <Card key={res.id} padding="md">
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-                      <Badge variant={res.category}>{res.category}</Badge>
-                      <Badge variant={res.visibility}>{res.visibility}</Badge>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {groupedResources.length === 0 ? (
+              unitResources.map((res) => (
+                <Card key={res.id} padding="md">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+                        <Badge variant={res.category}>{res.category}</Badge>
+                        <Badge variant={res.visibility}>{res.visibility}</Badge>
+                      </div>
+                      <p style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text)" }}>{res.title}</p>
                     </div>
-                    <p style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text)" }}>{res.title}</p>
+                    <button
+                      onClick={() => handleDeleteResource(res.id)}
+                      style={{ border: "none", background: "transparent", cursor: "pointer", color: "#dc2626", padding: 6 }}
+                      title="Delete Resource"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDeleteResource(res.id)}
-                    style={{ border: "none", background: "transparent", cursor: "pointer", color: "#dc2626", padding: 6 }}
-                    title="Delete Resource"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))
+            ) : (
+              groupedResources.map((group) => (
+                <Card key={group.branch} padding="md">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Badge variant={group.branch}>{group.branch}</Badge>
+                      <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>{group.resources.length} item{group.resources.length === 1 ? "" : "s"}</p>
+                    </div>
+                    <button
+                      onClick={() => openUploadModal(group.branch as ResourceCategory)}
+                      style={{ border: "1px solid var(--border)", background: "rgba(143,191,159,0.12)", color: "var(--default-color)", borderRadius: "var(--radius-full)", padding: "4px 10px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700 }}
+                    >
+                      Add {group.branch}
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {group.resources.map((res) => (
+                      <div key={res.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 12px", background: "var(--surface-glass-dark)", borderRadius: "var(--radius-sm)" }}>
+                        <div>
+                          <p style={{ fontWeight: 700, fontSize: "0.86rem", color: "var(--text)" }}>{res.title}</p>
+                          <p style={{ fontSize: "0.72rem", color: "var(--text-subtle)" }}>{res.visibility}</p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteResource(res.id)}
+                          style={{ border: "none", background: "transparent", cursor: "pointer", color: "#dc2626", padding: 6 }}
+                          title="Delete Resource"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              ))
+            )}
           </div>
         )}
       </div>
@@ -277,40 +344,99 @@ export default function CRDashboardPage() {
           <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(53,53,53,0.5)", backdropFilter: "blur(6px)" }}>
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} style={{ width: "100%", maxWidth: 500, background: "var(--surface-elevated)", borderRadius: "var(--radius-xl)", border: "1px solid var(--border-strong)", padding: 28 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", fontWeight: 800 }}>Upload Academic Resource</h3>
+                <div>
+                  <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", fontWeight: 800 }}>Upload Academic Resource</h3>
+                  <p style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: 4 }}>
+                    {classroomUnitData ? `${classroomUnitData.department?.name} · ${classroomUnitData.session?.name}` : "Your classroom unit"}
+                  </p>
+                </div>
                 <button onClick={() => setShowUploadModal(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}><X size={18} /></button>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <Input label="Resource Title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Database Quiz 1 Solution" />
+                {uploadStep === 1 ? (
+                  <>
+                    <div>
+                      <p style={{ fontWeight: 700, fontSize: "0.88rem", marginBottom: 8 }}>Choose a default branch</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {defaultBranches.map((branch) => (
+                          <button
+                            key={branch}
+                            onClick={() => {
+                              setCategory(branch);
+                              setUploadStep(2);
+                            }}
+                            style={{
+                              border: category === branch ? "1px solid var(--default-color)" : "1px solid var(--border)",
+                              background: category === branch ? "rgba(143,191,159,0.16)" : "transparent",
+                              color: category === branch ? "var(--default-color)" : "var(--text-muted)",
+                              borderRadius: "var(--radius-full)",
+                              padding: "7px 12px",
+                              cursor: "pointer",
+                              fontSize: "0.78rem",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {branch}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label className="input-label">Category</label>
-                    <select value={category} onChange={(e) => setCategory(e.target.value as ResourceCategory)} className="input-field">
-                      {["Lecture", "Notes", "PYQ", "Tutorial", "Software", "Other"].map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="input-label">Visibility</label>
-                    <select value={visibility} onChange={(e) => setVisibility(e.target.value as Visibility)} className="input-field">
-                      <option value="PRIVATE">Private (Classroom)</option>
-                      <option value="PUBLIC">Public</option>
-                    </select>
-                  </div>
-                </div>
+                    <div style={{ background: "rgba(143,191,159,0.08)", border: "1px solid rgba(143,191,159,0.3)", borderRadius: "var(--radius-md)", padding: "12px 14px" }}>
+                      <p style={{ fontSize: "0.74rem", color: "var(--default-color)", fontWeight: 700, marginBottom: 6 }}>Default branch setup</p>
+                      <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                        Every classroom unit already starts with these resource branches. Pick one and continue with the file details.
+                      </p>
+                    </div>
 
-                <Input label="Google Drive File URL" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://drive.google.com/file/d/.../view" />
-                <Input label="Preview URL (Optional)" value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} placeholder="https://drive.google.com/file/d/.../preview" />
+                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                      <Button variant="accent" onClick={() => setUploadStep(2)}>Continue →</Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Input label="Resource Title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={`e.g. ${category} handout`} />
 
-                {uploadError && <p style={{ fontSize: "0.82rem", color: "#dc2626" }}>{uploadError}</p>}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label className="input-label">Branch</label>
+                        <select value={category} onChange={(e) => setCategory(e.target.value as ResourceCategory)} className="input-field">
+                          {defaultBranches.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="input-label">Visibility</label>
+                        <select value={visibility} onChange={(e) => setVisibility(e.target.value as Visibility)} className="input-field">
+                          <option value="PRIVATE">Private (Classroom)</option>
+                          <option value="PUBLIC">Public</option>
+                        </select>
+                      </div>
+                    </div>
 
-                <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 8 }}>
-                  <Button variant="ghost" onClick={() => setShowUploadModal(false)}>Cancel</Button>
-                  <Button variant="accent" loading={uploading} onClick={() => handleUpload()}>Upload</Button>
-                </div>
+                    {classroomUnitData?.session?.course && (
+                      <div style={{ background: "rgba(143,191,159,0.08)", border: "1px solid rgba(143,191,159,0.3)", borderRadius: "var(--radius-md)", padding: "10px 12px" }}>
+                        <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--default-color)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Auto-linked course</p>
+                        <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: 4 }}>{classroomUnitData.session.course.name}</p>
+                      </div>
+                    )}
+
+                    <Input label="Google Drive File URL" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://drive.google.com/file/d/.../view" />
+                    <Input label="Preview URL (Optional)" value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} placeholder="https://drive.google.com/file/d/.../preview" />
+
+                    {uploadError && <p style={{ fontSize: "0.82rem", color: "#dc2626" }}>{uploadError}</p>}
+
+                    <div style={{ display: "flex", gap: 12, justifyContent: "space-between", marginTop: 8 }}>
+                      <Button variant="ghost" onClick={() => setUploadStep(1)}>← Back</Button>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <Button variant="ghost" onClick={() => setShowUploadModal(false)}>Cancel</Button>
+                        <Button variant="accent" loading={uploading} onClick={() => handleUpload()}>Upload</Button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </motion.div>
           </div>

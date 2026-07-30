@@ -1,6 +1,6 @@
 import "../../src/config/index.js"; // ensure dotenv is loaded
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../generated/prisma/index.js";
+import { PrismaClient } from "@prisma/client";
 import { env } from "../config/index.js";
 
 // pg Pool is imported lazily so this module can be tree-shaken in tests

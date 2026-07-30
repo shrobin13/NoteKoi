@@ -1,5 +1,5 @@
 import apiClient from "./api";
-import type { AdminStats, User, CRMember } from "./types";
+import type { AdminStats, User, CRMember, CrSeat } from "./types";
 
 export async function getAdminStats(): Promise<AdminStats> {
   const { data } = await apiClient.get("/api/admin/stats");
@@ -33,7 +33,7 @@ export async function getCRs(classroomUnitId: string): Promise<CRMember[]> {
 export async function assignCR(payload: {
   userId: string;
   classroomUnitId: string;
-  seat: "PRIMARY" | "SECONDARY";
+  seat: CrSeat;
 }) {
   const { data } = await apiClient.post("/api/cr/assign", payload);
   return data.data;

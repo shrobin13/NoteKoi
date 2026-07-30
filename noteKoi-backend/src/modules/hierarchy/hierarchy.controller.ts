@@ -112,8 +112,8 @@ export async function deleteSession(req: Request, res: Response, next: NextFunct
 
 export async function listClassroomUnits(req: Request, res: Response, next: NextFunction) {
   try {
-    const { departmentId, sessionId } = req.query as { departmentId?: string; sessionId?: string };
-    res.json(success(await svc.listClassroomUnits({ departmentId, sessionId }, req.query as any)));
+    const { departmentId, sessionId, collegeId } = req.query as { departmentId?: string; sessionId?: string; collegeId?: string };
+    res.json(success(await svc.listClassroomUnits({ departmentId, sessionId, collegeId }, req.query as any)));
   } catch (e) { next(e); }
 }
 export async function getClassroomUnit(req: Request, res: Response, next: NextFunction) {
@@ -124,4 +124,22 @@ export async function createClassroomUnit(req: Request, res: Response, next: Nex
 }
 export async function deleteClassroomUnit(req: Request, res: Response, next: NextFunction) {
   try { await svc.deleteClassroomUnit(getParam(req, "id")); res.json(success(null, "ClassroomUnit deleted")); } catch (e) { next(e); }
+}
+
+// ─── Bootstrap ───────────────────────────────────────────────────────────────────
+
+export async function bootstrapCollege(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.status(201).json(success(await svc.bootstrapCollege(req.body), "College bootstrapped successfully"));
+  } catch (e) { next(e); }
+}
+
+export async function addClassroomUnitToDept(req: Request, res: Response, next: NextFunction) {
+  try {
+    const departmentId = getParam(req, "departmentId");
+    res.status(201).json(success(
+      await svc.addClassroomUnitToExistingDept(departmentId, req.body),
+      "Classroom unit added",
+    ));
+  } catch (e) { next(e); }
 }

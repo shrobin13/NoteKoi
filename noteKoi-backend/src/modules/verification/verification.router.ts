@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { requireRole } from "../../middlewares/requireRole.js";
 import { validateWithDetails } from "../../middlewares/validate.js";
-import { Role } from "../../../generated/prisma/index.js";
+import { Role } from "@prisma/client";
 import { RequestVerificationSchema } from "./verification.schema.js";
 import * as ctrl from "./verification.controller.js";
 

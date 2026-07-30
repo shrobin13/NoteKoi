@@ -19,8 +19,7 @@
     "resolveJsonModule": true
   },
   "include": [
-    "src/**/*",
-    "generated/prisma/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

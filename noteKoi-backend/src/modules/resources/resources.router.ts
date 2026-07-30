@@ -3,7 +3,7 @@ import { authenticate } from "../../middlewares/authenticate.js";
 import { requireRole } from "../../middlewares/requireRole.js";
 import { requireScope } from "../../middlewares/requireScope.js";
 import { validateWithDetails } from "../../middlewares/validate.js";
-import { Role } from "../../../generated/prisma/index.js";
+import { Role } from "@prisma/client";
 import {
   CreateResourceSchema,
   UpdateResourceSchema,

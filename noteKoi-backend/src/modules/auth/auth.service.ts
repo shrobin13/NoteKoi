@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import prisma from "../../lib/prisma.js";
 import { env } from "../../config/index.js";
 import { ApiError } from "../../types/index.js";
-import { VerificationStatus, Role } from "../../../generated/prisma/index.js";
+import { VerificationStatus, Role } from "@prisma/client";
 import type { RegisterDto, LoginDto } from "./auth.schema.js";
 import type { JwtPayload } from "../../middlewares/authenticate.js";
 

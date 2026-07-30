@@ -2,11 +2,13 @@
 
 // ── Enums / Literals ──────────────────────────────────────────────────────
 export type Role = "STUDENT" | "CR" | "SUB_ADMIN" | "OWNER_ADMIN";
+/** @deprecated Use VerificationStatus instead */
 export type UserStatus = "UNVERIFIED" | "VERIFIED" | "SUSPENDED";
-export type CrSeat = "PRIMARY" | "SECONDARY";
+export type CrSeat = "MAIN" | "CO";
 export type Visibility = "PUBLIC" | "PRIVATE";
 export type ResourceCategory = "Lecture" | "Notes" | "PYQ" | "Tutorial" | "Software" | "Other";
-export type VerificationStatus = "PENDING" | "APPROVED" | "REJECTED";
+/** Matches the backend VerificationStatus enum: PENDING | VERIFIED | REJECTED */
+export type VerificationStatus = "PENDING" | "VERIFIED" | "REJECTED";
 
 // ── User ──────────────────────────────────────────────────────────────────
 export interface User {
@@ -14,7 +16,8 @@ export interface User {
   name: string;
   email: string;
   role: Role;
-  status: UserStatus;
+  /** Returned by the backend as verificationStatus (PENDING | VERIFIED | REJECTED) */
+  verificationStatus: VerificationStatus;
   collegeId?: string;
   classroomUnitId?: string;
   crSeat?: CrSeat;

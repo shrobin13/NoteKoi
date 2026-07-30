@@ -1,6 +1,6 @@
 import prisma from "../../lib/prisma.js";
 import { ApiError, paginate } from "../../types/index.js";
-import { Visibility } from "../../../generated/prisma/index.js";
+import { Visibility } from "@prisma/client";
 import type {
   CreateResourceDto,
   UpdateResourceDto,

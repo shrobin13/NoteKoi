@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { Role } from "../../generated/prisma/index.js";
+import { Role } from "@prisma/client";
 import { ApiError, getParam } from "../types/index.js";
 import prisma from "../lib/prisma.js";
 

@@ -3,7 +3,7 @@ import { authenticate } from "../../middlewares/authenticate.js";
 import { requireRole } from "../../middlewares/requireRole.js";
 import { requireScope } from "../../middlewares/requireScope.js";
 import { validateWithDetails } from "../../middlewares/validate.js";
-import { Role } from "../../../generated/prisma/index.js";
+import { Role } from "@prisma/client";
 import {
   CreateCollegeSchema,
   UpdateCollegeSchema,
@@ -16,6 +16,8 @@ import {
   CreateSessionSchema,
   UpdateSessionSchema,
   CreateClassroomUnitSchema,
+  BootstrapCollegeSchema,
+  AddClassroomUnitSchema,
   PaginationSchema,
 } from "./hierarchy.schema.js";
 import * as ctrl from "./hierarchy.controller.js";
@@ -180,6 +182,26 @@ router.delete(
   authenticate(),
   requireRole(Role.OWNER_ADMIN, Role.SUB_ADMIN),
   ctrl.deleteClassroomUnit,
+);
+
+// ─── Bootstrap: one-shot hierarchy creation (OWNER_ADMIN only) ─────────────────────────
+// Creates College (upsert) → Department → Semester → Course → Session → ClassroomUnit
+router.post(
+  "/bootstrap",
+  authenticate(),
+  requireRole(Role.OWNER_ADMIN),
+  validateWithDetails(BootstrapCollegeSchema),
+  ctrl.bootstrapCollege,
+);
+
+// Add a new session / ClassroomUnit to an existing Department
+// (OWNER_ADMIN or that college's SUB_ADMIN)
+router.post(
+  "/departments/:departmentId/classroom-units",
+  authenticate(),
+  requireRole(Role.OWNER_ADMIN, Role.SUB_ADMIN),
+  validateWithDetails(AddClassroomUnitSchema),
+  ctrl.addClassroomUnitToDept,
 );
 
 export default router;

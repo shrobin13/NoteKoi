@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/index.js";
 import { ApiError } from "../types/index.js";
-import { Role, VerificationStatus } from "../../generated/prisma/index.js";
+import { Role, VerificationStatus } from "@prisma/client";
 
 export interface JwtPayload {
   sub: string; // userId

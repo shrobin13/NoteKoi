@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import prisma from "../src/lib/prisma.js";
-import { Role, VerificationStatus, AdminRole } from "../generated/prisma/index.js";
+import { Role, VerificationStatus, AdminRole } from "@prisma/client";
 import { env } from "../src/config/index.js";
 
 async function ensureSeedHierarchy(collegeName: string) {

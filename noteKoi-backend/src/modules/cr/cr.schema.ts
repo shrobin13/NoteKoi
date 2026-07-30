@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CrSeat } from "../../../generated/prisma/index.js";
+import { CrSeat } from "@prisma/client";
 
 export const AssignCRSchema = z.object({
   userId: z.string().cuid(),

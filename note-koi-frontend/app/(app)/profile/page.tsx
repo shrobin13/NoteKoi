@@ -82,8 +82,8 @@ export default function ProfilePage() {
                 {user?.name}
               </h1>
               <Badge variant={user?.role ?? "STUDENT"}>{user?.role?.replace("_", " ")}</Badge>
-              <Badge variant={user?.status === "VERIFIED" ? "VERIFIED" : "UNVERIFIED"}>
-                {user?.status}
+              <Badge variant={user?.verificationStatus === "VERIFIED" ? "VERIFIED" : "UNVERIFIED"}>
+                {user?.verificationStatus ?? "PENDING"}
               </Badge>
             </div>
             <p style={{ fontSize: "0.85rem", color: "var(--text-subtle)" }}>{user?.email}</p>
@@ -100,7 +100,7 @@ export default function ProfilePage() {
           {[
             { icon: <FileText size={18} />, label: "Resources Shared", value: isCR ? "Active" : "Member" },
             { icon: <Bell size={18} />, label: "Notices Scope", value: "Classroom" },
-            { icon: <ShieldCheck size={18} />, label: "Verification", value: user?.status === "VERIFIED" ? "Approved" : "Pending" },
+            { icon: <ShieldCheck size={18} />, label: "Verification", value: user?.verificationStatus === "VERIFIED" ? "Approved" : "Pending" },
           ].map((stat) => (
             <Card key={stat.label} padding="md">
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

@@ -1,4 +1,4 @@
-import { Role, VerificationStatus } from "../../generated/prisma/index.js";
+import { Role, VerificationStatus } from "@prisma/client";
 
 // Augment Express Request with the authenticated user payload.
 // This is the canonical shape attached by the `authenticate` middleware.

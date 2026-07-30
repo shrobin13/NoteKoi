@@ -1,6 +1,6 @@
 import prisma from "../../lib/prisma.js";
 import { ApiError } from "../../types/index.js";
-import { AuditAction, Role, VerificationStatus } from "../../../generated/prisma/index.js";
+import { AuditAction, Role, VerificationStatus } from "@prisma/client";
 import type { AssignCRDto, DemoteCRDto } from "./cr.schema.js";
 
 /**

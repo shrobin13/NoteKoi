@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import * as resourcesService from "./resources.service.js";
 import { success, ApiError, getParam } from "../../types/index.js";
-import { Visibility, Role } from "../../../generated/prisma/index.js";
+import { Visibility, Role } from "@prisma/client";
 
 // GET /api/resources/public — Unauthenticated public resources search & browsing
 export async function getPublicResources(req: Request, res: Response, next: NextFunction) {

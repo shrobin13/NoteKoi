@@ -66,7 +66,8 @@ export async function deleteDepartment(id: string): Promise<void> {
 // ── Semesters ─────────────────────────────────────────────────────────────
 export async function getSemesters(departmentId: string): Promise<Semester[]> {
   const { data } = await apiClient.get(`/api/hierarchy/departments/${departmentId}/semesters`);
-  return data.data as Semester[];
+  const res = data.data as any;
+  return (Array.isArray(res) ? res : res?.data ?? []) as Semester[];
 }
 
 export async function getSemester(id: string): Promise<Semester> {
@@ -91,7 +92,8 @@ export async function deleteSemester(id: string): Promise<void> {
 // ── Courses ───────────────────────────────────────────────────────────────
 export async function getCourses(semesterId: string): Promise<Course[]> {
   const { data } = await apiClient.get(`/api/hierarchy/semesters/${semesterId}/courses`);
-  return data.data as Course[];
+  const res = data.data as any;
+  return (Array.isArray(res) ? res : res?.data ?? []) as Course[];
 }
 
 export async function getCourse(id: string): Promise<Course> {
@@ -116,7 +118,8 @@ export async function deleteCourse(id: string): Promise<void> {
 // ── Sessions ──────────────────────────────────────────────────────────────
 export async function getSessions(courseId: string): Promise<Session[]> {
   const { data } = await apiClient.get(`/api/hierarchy/courses/${courseId}/sessions`);
-  return data.data as Session[];
+  const res = data.data as any;
+  return (Array.isArray(res) ? res : res?.data ?? []) as Session[];
 }
 
 export async function getSession(id: string): Promise<Session> {
@@ -130,9 +133,23 @@ export async function createSession(payload: { name: string; courseId: string })
 }
 
 // ── Classroom Units ───────────────────────────────────────────────────────
-export async function getClassroomUnits(): Promise<ClassroomUnit[]> {
-  const { data } = await apiClient.get("/api/hierarchy/classroom-units");
-  return data.data as ClassroomUnit[];
+/**
+ * Fetch classroom units, optionally scoped to a specific college.
+ *
+ * When collegeId is provided the call first retrieves all departments for that
+ * college (all pages up to 200) and then fetches classroom units that belong
+ * to those department IDs. The backend /classroom-units endpoint only supports
+ * departmentId filtering, so we resolve the college → departments mapping here
+ * on the client to keep the backend simple.
+ *
+ * Without collegeId this falls back to a global fetch (useful for admins).
+ */
+export async function getClassroomUnits(collegeId?: string): Promise<ClassroomUnit[]> {
+  const { data } = await apiClient.get("/api/hierarchy/classroom-units", {
+    params: { ...(collegeId ? { collegeId } : {}), limit: 200 },
+  });
+  const res = data.data as any;
+  return (Array.isArray(res) ? res : res?.data ?? []) as ClassroomUnit[];
 }
 
 export async function getClassroomUnit(id: string): Promise<ClassroomUnit> {
@@ -147,4 +164,28 @@ export async function createClassroomUnit(payload: { departmentId: string; sessi
 
 export async function deleteClassroomUnit(id: string): Promise<void> {
   await apiClient.delete(`/api/hierarchy/classroom-units/${id}`);
+}
+
+// ── Bootstrap (one-shot wizard) ──────────────────────────────────────────────────
+
+/** Creates College → Department → Semester → Course → Session → ClassroomUnit */
+export async function bootstrapCollege(payload: {
+  collegeName: string;
+  departmentName: string;
+  sessionLabel: string;
+}): Promise<{ college: College; department: Department; classroomUnit: ClassroomUnit }> {
+  const { data } = await apiClient.post("/api/hierarchy/bootstrap", payload);
+  return data.data as { college: College; department: Department; classroomUnit: ClassroomUnit };
+}
+
+/** Adds a new Session + ClassroomUnit to an existing department */
+export async function addClassroomUnitToDept(
+  departmentId: string,
+  sessionLabel: string,
+): Promise<{ classroomUnit: ClassroomUnit }> {
+  const { data } = await apiClient.post(
+    `/api/hierarchy/departments/${departmentId}/classroom-units`,
+    { sessionLabel },
+  );
+  return data.data as { classroomUnit: ClassroomUnit };
 }

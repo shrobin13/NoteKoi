@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Visibility } from "../../../generated/prisma/index.js";
+import { Visibility } from "@prisma/client";
 
 const RESOURCE_CATEGORIES = ["Lecture", "Notes", "PYQ", "Tutorial", "Software", "Other"] as const;
 

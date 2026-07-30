@@ -8,8 +8,9 @@ import { getPublicResources } from "@/lib/resources";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { ResourceCardSkeleton } from "@/components/ui/Skeleton";
+import { PdfViewerModal } from "@/components/ui/PdfViewerModal";
 import { useUIStore } from "@/store/ui";
-import type { ResourceCategory } from "@/lib/types";
+import type { Resource, ResourceCategory } from "@/lib/types";
 import { useDebounce } from "@/hooks/useDebounce";
 
 const CATEGORIES: ResourceCategory[] = ["Lecture", "Notes", "PYQ", "Tutorial", "Software", "Other"];
@@ -28,6 +29,7 @@ export default function ExplorePage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<ResourceCategory | "">("");
   const [page, setPage] = useState(1);
+  const [previewResource, setPreviewResource] = useState<Resource | null>(null);
   const debouncedSearch = useDebounce(search, 350);
 
   useEffect(() => {
@@ -212,23 +214,42 @@ export default function ExplorePage() {
                     <p style={{ fontSize: "0.72rem", color: "var(--text-subtle)" }}>
                       {new Date(res.createdAt ?? "").toLocaleDateString()}
                     </p>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      {res.previewUrl && (
-                        <span style={{
-                          display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem",
-                          color: "var(--default-color)", fontWeight: 600,
-                        }}>
-                          <Eye size={12} /> Preview
-                        </span>
-                      )}
-                      <ArrowRight size={14} style={{ color: "var(--text-subtle)" }} />
-                    </div>
+                      <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                        {res.previewUrl && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setPreviewResource(res);
+                            }}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem",
+                              color: "var(--default-color)", fontWeight: 600, border: "none", background: "none", cursor: "pointer"
+                            }}
+                          >
+                            <Eye size={12} /> Preview
+                          </button>
+                        )}
+                        <ArrowRight size={14} style={{ color: "var(--text-subtle)" }} />
+                      </div>
                   </div>
                 </Card>
               </Link>
             </motion.div>
           ))}
         </motion.div>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {previewResource && (
+        <PdfViewerModal
+          open={!!previewResource}
+          onClose={() => setPreviewResource(null)}
+          title={previewResource.title}
+          fileUrl={previewResource.fileUrl}
+          previewUrl={previewResource.previewUrl}
+        />
       )}
 
       {/* Pagination */}

@@ -12,6 +12,8 @@ import type {
   CreateSessionDto,
   UpdateSessionDto,
   CreateClassroomUnitDto,
+  BootstrapCollegeDto,
+  AddClassroomUnitDto,
   PaginationDto,
 } from "./hierarchy.schema.js";
 
@@ -234,11 +236,12 @@ export async function deleteSession(id: string) {
 // ─── ClassroomUnits ───────────────────────────────────────────────────────────
 
 export async function listClassroomUnits(
-  filter: { departmentId?: string; sessionId?: string },
+  filter: { departmentId?: string; sessionId?: string; collegeId?: string },
   pagination: PaginationDto,
 ) {
   const { skip, take } = paginate(pagination.page, pagination.limit);
   const where = {
+    ...(filter.collegeId ? { department: { collegeId: filter.collegeId } } : {}),
     ...(filter.departmentId ? { departmentId: filter.departmentId } : {}),
     ...(filter.sessionId ? { sessionId: filter.sessionId } : {}),
   };
@@ -309,4 +312,116 @@ export async function deleteClassroomUnit(id: string) {
   const unit = await prisma.classroomUnit.findUnique({ where: { id } });
   if (!unit) throw ApiError.notFound("ClassroomUnit not found");
   return prisma.classroomUnit.delete({ where: { id } });
+}
+
+// ─── Bootstrap: full one-shot hierarchy creation ─────────────────────────────────
+
+/**
+ * Creates the full College → Department → Semester → Course(“General”) →
+ * Session → ClassroomUnit chain in a single atomic transaction.
+ *
+ * College is upserted by name so re-running with the same college name
+ * safely reuses the existing college. Department is created fresh inside
+ * that college (fails with 409 if the (collegeId, departmentName) pair
+ * already exists). The rest of the chain is always new.
+ */
+export async function bootstrapCollege(dto: BootstrapCollegeDto) {
+  return prisma.$transaction(async (tx) => {
+    // 1. Upsert college by name
+    const college = await tx.college.upsert({
+      where: { name: dto.collegeName },
+      create: { name: dto.collegeName },
+      update: {},
+    });
+
+    // 2. Create department (fail cleanly on duplicate dept name in same college)
+    const existingDept = await tx.department.findUnique({
+      where: { collegeId_name: { collegeId: college.id, name: dto.departmentName } },
+    });
+    if (existingDept) {
+      throw ApiError.conflict(
+        `Department "${dto.departmentName}" already exists in college "${dto.collegeName}". Use "Add Session" instead.`,
+        "DEPARTMENT_DUPLICATE",
+      );
+    }
+    const department = await tx.department.create({
+      data: { name: dto.departmentName, collegeId: college.id },
+    });
+
+    // 3. Create semester named after sessionLabel
+    const semester = await tx.semester.create({
+      data: { name: dto.sessionLabel, departmentId: department.id },
+    });
+
+    // 4. Create a "General" course under that semester
+    const course = await tx.course.create({
+      data: { name: "General", semesterId: semester.id },
+    });
+
+    // 5. Create session named after sessionLabel under that course
+    const session = await tx.session.create({
+      data: { name: dto.sessionLabel, courseId: course.id },
+    });
+
+    // 6. Create the ClassroomUnit (departmentId, sessionId) pair
+    const classroomUnit = await tx.classroomUnit.create({
+      data: { departmentId: department.id, sessionId: session.id },
+      include: {
+        department: { select: { id: true, name: true } },
+        session: { select: { id: true, name: true } },
+      },
+    });
+
+    return { college, department, classroomUnit };
+  });
+}
+
+/**
+ * Adds a new session (and its ClassroomUnit) to an already-existing department.
+ * Creates: Semester → Course(“General”) → Session → ClassroomUnit.
+ * Fails with 409 if the department already has a ClassroomUnit for this
+ * sessionLabel (enforced via the @@unique([departmentId, sessionId]) constraint).
+ */
+export async function addClassroomUnitToExistingDept(
+  departmentId: string,
+  dto: AddClassroomUnitDto,
+) {
+  return prisma.$transaction(async (tx) => {
+    const dept = await tx.department.findUnique({ where: { id: departmentId } });
+    if (!dept) throw ApiError.notFound("Department not found");
+
+    // Refuse if a semester with the same sessionLabel already exists to prevent
+    // silent duplicates. Admin should use a distinct label per session.
+    const existingSemester = await tx.semester.findUnique({
+      where: { departmentId_name: { departmentId, name: dto.sessionLabel } },
+    });
+    if (existingSemester) {
+      throw ApiError.conflict(
+        `A session "${dto.sessionLabel}" already exists for this department.`,
+        "SESSION_DUPLICATE",
+      );
+    }
+
+    const semester = await tx.semester.create({
+      data: { name: dto.sessionLabel, departmentId },
+    });
+
+    const course = await tx.course.create({
+      data: { name: "General", semesterId: semester.id },
+    });
+
+    const session = await tx.session.create({
+      data: { name: dto.sessionLabel, courseId: course.id },
+    });
+
+    const classroomUnit = await tx.classroomUnit.create({
+      data: { departmentId, sessionId: session.id },
+      include: {
+        department: { select: { id: true, name: true } },
+        session: { select: { id: true, name: true } },
+      },
+    });
+
+    return { classroomUnit };
+  });
 }

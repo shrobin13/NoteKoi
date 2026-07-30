@@ -32,10 +32,10 @@ export default function RegisterPage() {
     queryFn: () => getColleges(1, 100),
   });
 
-  const { data: units } = useQuery({
-    queryKey: ["classroom-units"],
-    queryFn: () => getClassroomUnits(),
-    enabled: step === 1,
+  const { data: units = [], isFetching: loadingUnits } = useQuery({
+    queryKey: ["classroom-units", collegeId],
+    queryFn: () => getClassroomUnits(collegeId),
+    enabled: step === 1 && !!collegeId,
   });
 
   async function handleSubmit() {
@@ -196,15 +196,31 @@ export default function RegisterPage() {
                     className="input-field"
                     id="reg-unit"
                     style={{ width: "100%", cursor: "pointer" }}
-                    disabled={!collegeId}
+                    disabled={!collegeId || loadingUnits}
                   >
-                    <option value="">Choose your class...</option>
-                    {units?.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.department?.name ?? u.departmentId} — {u.session?.name ?? u.sessionId}
-                      </option>
-                    ))}
+                    {!collegeId
+                      ? <option value="">Select a college first...</option>
+                      : loadingUnits
+                      ? <option value="">Loading classroom units...</option>
+                      : units.length === 0
+                      ? <option value="">No classroom units found for this college</option>
+                      : (
+                        <>
+                          <option value="">Choose your class...</option>
+                          {units.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.department?.name ?? u.departmentId} — {u.session?.name ?? u.sessionId}
+                            </option>
+                          ))}
+                        </>
+                      )
+                    }
                   </select>
+                  {collegeId && !loadingUnits && units.length === 0 && (
+                    <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 6 }}>
+                      No classroom units have been set up for this college yet. Please contact your admin.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
