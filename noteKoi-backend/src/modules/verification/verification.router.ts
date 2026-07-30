@@ -32,4 +32,12 @@ router.post(
   ctrl.approveVerification,
 );
 
+// POST /api/verification/reject/:requestId — reject a pending verification
+router.post(
+  "/reject/:requestId",
+  authenticate(),
+  requireRole(Role.CR, Role.SUB_ADMIN, Role.OWNER_ADMIN),
+  ctrl.rejectVerification,
+);
+
 export default router;

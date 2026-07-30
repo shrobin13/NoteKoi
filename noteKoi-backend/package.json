@@ -16,13 +16,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "11.13.1",
-      "onFail": "download"
-    }
-  },
+  "packageManager": "pnpm@11.13.1",
   "type": "module",
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",

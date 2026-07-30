@@ -327,7 +327,8 @@ exports.Role = exports.$Enums.Role = {
 
 exports.VerificationStatus = exports.$Enums.VerificationStatus = {
   PENDING: 'PENDING',
-  VERIFIED: 'VERIFIED'
+  VERIFIED: 'VERIFIED',
+  REJECTED: 'REJECTED'
 };
 
 exports.AdminRole = exports.$Enums.AdminRole = {

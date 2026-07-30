@@ -2,10 +2,11 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, Clock, Users, Plus, Upload, Trash2, X, FileText } from "lucide-react";
-import { getPendingVerifications, approveVerification } from "@/lib/verification";
+import { CheckCircle, Clock, Users, Plus, Upload, Trash2, X, FileText, XCircle, Lock, Send } from "lucide-react";
+import { getPendingVerifications, approveVerification, rejectVerification } from "@/lib/verification";
 import { getCRs } from "@/lib/admin";
 import { createResource, getUnitResources, deleteResource } from "@/lib/resources";
+import { createShare } from "@/lib/shares";
 import { useAuthStore } from "@/store/auth";
 import { useUIStore } from "@/store/ui";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +29,12 @@ export default function CRDashboardPage() {
   const [fileUrl, setFileUrl] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
   const [uploadError, setUploadError] = useState("");
+
+  // Personal Share composer
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareContent, setShareContent] = useState("");
+  const [recipientId, setRecipientId] = useState("");
+  const [shareError, setShareError] = useState("");
 
   useEffect(() => {
     setBreadcrumbs([{ label: "CR Dashboard", href: "/admin/cr" }]);
@@ -54,6 +61,11 @@ export default function CRDashboardPage() {
 
   const { mutate: approve, isPending: approving } = useMutation({
     mutationFn: (requestId: string) => approveVerification(requestId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pending-verifications"] }),
+  });
+
+  const { mutate: reject, isPending: rejecting } = useMutation({
+    mutationFn: (requestId: string) => rejectVerification(requestId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pending-verifications"] }),
   });
 
@@ -88,6 +100,21 @@ export default function CRDashboardPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["unit-resources", classroomUnitId] }),
   });
 
+  const { mutate: handleSendShare, isPending: sendingShare } = useMutation({
+    mutationFn: () => createShare({ content: shareContent, classroomUnitId, recipientIds: [recipientId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personal-shares"] });
+      setShowShareModal(false);
+      setShareContent("");
+      setRecipientId("");
+      setShareError("");
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { message?: string } } };
+      setShareError(e?.response?.data?.message ?? "Failed to send personal share");
+    },
+  });
+
   const pending = pendingData?.data ?? [];
   const total = pendingData?.meta?.total ?? 0;
   const unitResources = unitResourcesData?.data ?? [];
@@ -103,9 +130,14 @@ export default function CRDashboardPage() {
             Manage verifications and academic resources for your classroom unit
           </p>
         </div>
-        <Button variant="accent" icon={<Upload size={16} />} onClick={() => setShowUploadModal(true)}>
-          Upload Resource
-        </Button>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <Button variant="accent" icon={<Upload size={16} />} onClick={() => setShowUploadModal(true)}>
+            Upload Resource
+          </Button>
+          <Button variant="secondary" icon={<Lock size={16} />} onClick={() => setShowShareModal(true)}>
+            Send Confidential Share
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -155,7 +187,7 @@ export default function CRDashboardPage() {
         ) : (
           <div style={{ background: "var(--surface-elevated)", borderRadius: "var(--radius-xl)", border: "1px solid var(--border)", overflow: "hidden" }}>
             {pending.map((req, i) => (
-              <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 20px", borderBottom: i < pending.length - 1 ? "1px solid var(--border)" : "none" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 20px", borderBottom: i < pending.length - 1 ? "1px solid var(--border)" : "none" }}>
                 <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 800, color: "#fff", flexShrink: 0 }}>
                   {req.user?.name?.charAt(0) ?? "?"}
                 </div>
@@ -163,9 +195,14 @@ export default function CRDashboardPage() {
                   <p style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text)" }}>{req.user?.name}</p>
                   <p style={{ fontSize: "0.75rem", color: "var(--text-subtle)" }}>{req.user?.email}</p>
                 </div>
-                <Button variant="primary" size="sm" onClick={() => approve(req.id)} loading={approving} icon={<CheckCircle size={14} />}>
-                  Approve
-                </Button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button variant="primary" size="sm" onClick={() => approve(req.id)} loading={approving} icon={<CheckCircle size={14} />}>
+                    Approve
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => reject(req.id)} loading={rejecting} style={{ color: "#dc2626" }}>
+                    <XCircle size={14} /> Reject
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -211,6 +248,29 @@ export default function CRDashboardPage() {
         )}
       </div>
 
+      {/* Personal / Confidential Share Composer (CR only) */}
+      <div style={{ marginTop: 40 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 700, color: "var(--text)" }}>
+              Confidential Shares
+            </h2>
+            <p style={{ fontSize: "0.78rem", color: "var(--text-subtle)", marginTop: 2 }}>
+              Send private, targeted messages to specific students in your unit
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" icon={<Send size={14} />} onClick={() => setShowShareModal(true)}>
+            New Share
+          </Button>
+        </div>
+        <div style={{ padding: "20px 24px", background: "rgba(143,191,159,0.06)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", gap: 14 }}>
+          <Lock size={20} style={{ color: "var(--default-color)", flexShrink: 0 }} />
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+            Personal shares are end-to-end confidential. Only the addressed recipient can read the content. Admins and other students cannot see it.
+          </p>
+        </div>
+      </div>
+
       {/* Upload Resource Modal */}
       <AnimatePresence>
         {showUploadModal && (
@@ -250,6 +310,42 @@ export default function CRDashboardPage() {
                 <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 8 }}>
                   <Button variant="ghost" onClick={() => setShowUploadModal(false)}>Cancel</Button>
                   <Button variant="accent" loading={uploading} onClick={() => handleUpload()}>Upload</Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Personal Share Modal */}
+      <AnimatePresence>
+        {showShareModal && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(53,53,53,0.5)", backdropFilter: "blur(6px)" }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} style={{ width: "100%", maxWidth: 480, background: "var(--surface-elevated)", borderRadius: "var(--radius-xl)", border: "1px solid var(--border-strong)", padding: 28 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div>
+                  <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.15rem", fontWeight: 800 }}>Send Confidential Share</h3>
+                  <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 4 }}>Only the specified recipient will see this message</p>
+                </div>
+                <button onClick={() => setShowShareModal(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}><X size={18} /></button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <Input label="Recipient User ID (CUID)" value={recipientId} onChange={(e) => setRecipientId(e.target.value)} placeholder="User ID of recipient student" />
+                <div>
+                  <label className="input-label">Confidential Content</label>
+                  <textarea
+                    value={shareContent}
+                    onChange={(e) => setShareContent(e.target.value)}
+                    rows={4}
+                    className="input-field"
+                    placeholder="Type your private note or suggestion..."
+                    style={{ resize: "vertical" }}
+                  />
+                </div>
+                {shareError && <p style={{ fontSize: "0.82rem", color: "#dc2626" }}>{shareError}</p>}
+                <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                  <Button variant="ghost" onClick={() => setShowShareModal(false)}>Cancel</Button>
+                  <Button variant="accent" loading={sendingShare} disabled={!recipientId.trim() || !shareContent.trim()} onClick={() => handleSendShare()}>Send Share</Button>
                 </div>
               </div>
             </motion.div>

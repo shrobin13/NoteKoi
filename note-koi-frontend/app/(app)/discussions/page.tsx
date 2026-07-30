@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Users, Send, Plus, X, Lock } from "lucide-react";
-import { getGroups, createGroup, getMessages, sendMessage } from "@/lib/discussions";
+import { MessageSquare, Users, Send, Plus, X, Lock, UserPlus, UserMinus } from "lucide-react";
+import { getGroups, createGroup, getMessages, sendMessage, addGroupMember, removeGroupMember } from "@/lib/discussions";
 import { useAuthStore } from "@/store/auth";
 import { useUIStore } from "@/store/ui";
 import { Card } from "@/components/ui/Card";
@@ -19,8 +19,11 @@ export default function DiscussionsPage() {
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [msgContent, setMsgContent] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [memberUserId, setMemberUserId] = useState("");
   const [error, setError] = useState("");
+  const [memberError, setMemberError] = useState("");
 
   useEffect(() => {
     setBreadcrumbs([{ label: "Discussions", href: "/discussions" }]);
@@ -68,6 +71,26 @@ export default function DiscussionsPage() {
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { message?: string } } };
       setError(e?.response?.data?.message ?? "Failed to create group");
+    },
+  });
+
+  const { mutate: handleAddMember, isPending: addingMember } = useMutation({
+    mutationFn: () => addGroupMember(activeGroupId!, memberUserId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discussion-groups", classroomUnitId] });
+      setMemberUserId("");
+      setMemberError("");
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { message?: string } } };
+      setMemberError(e?.response?.data?.message ?? "Failed to add member");
+    },
+  });
+
+  const { mutate: handleRemoveMember } = useMutation({
+    mutationFn: (targetUserId: string) => removeGroupMember(activeGroupId!, targetUserId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discussion-groups", classroomUnitId] });
     },
   });
 
@@ -131,11 +154,18 @@ export default function DiscussionsPage() {
         <Card padding="none" style={{ display: "flex", flexDirection: "column", height: 540, overflow: "hidden" }}>
           {activeGroup ? (
             <>
-              <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "var(--surface-elevated)" }}>
-                <h3 style={{ fontSize: "0.95rem", fontWeight: 700, fontFamily: "var(--font-display)" }}>{activeGroup.name}</h3>
-                <p style={{ fontSize: "0.75rem", color: "var(--text-subtle)" }}>
-                  {activeGroup.course ? `Course Channel (${activeGroup.course.name})` : "General Channel"}
-                </p>
+              <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "var(--surface-elevated)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <h3 style={{ fontSize: "0.95rem", fontWeight: 700, fontFamily: "var(--font-display)" }}>{activeGroup.name}</h3>
+                  <p style={{ fontSize: "0.75rem", color: "var(--text-subtle)" }}>
+                    {activeGroup.course ? `Course Channel (${activeGroup.course.name})` : "General Channel"} · {activeGroup._count?.memberships ?? 1} members
+                  </p>
+                </div>
+                {isCR && (
+                  <Button variant="secondary" size="sm" icon={<Users size={14} />} onClick={() => setShowMembersModal(true)}>
+                    Manage Members
+                  </Button>
+                )}
               </div>
 
               {/* Messages list */}
@@ -218,6 +248,88 @@ export default function DiscussionsPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Manage Members Modal */}
+      <AnimatePresence>
+        {showMembersModal && activeGroup && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(53,53,53,0.5)", backdropFilter: "blur(6px)" }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} style={{ width: "100%", maxWidth: 480, background: "var(--surface-elevated)", borderRadius: "var(--radius-xl)", border: "1px solid var(--border-strong)", padding: 28 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div>
+                  <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.15rem", fontWeight: 800 }}>Manage Members</h3>
+                  <p style={{ fontSize: "0.78rem", color: "var(--text-subtle)", marginTop: 2 }}>{activeGroup.name}</p>
+                </div>
+                <button onClick={() => { setShowMembersModal(false); setMemberError(""); }} style={{ border: "none", background: "transparent", cursor: "pointer" }}><X size={18} /></button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {/* Add member form */}
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+                  <div style={{ flex: 1 }}>
+                    <Input
+                      label="Add Member by User ID (CUID)"
+                      value={memberUserId}
+                      onChange={(e) => setMemberUserId(e.target.value)}
+                      placeholder="Enter student CUID"
+                    />
+                  </div>
+                  <Button
+                    variant="accent"
+                    size="sm"
+                    icon={<UserPlus size={14} />}
+                    loading={addingMember}
+                    disabled={!memberUserId.trim()}
+                    onClick={() => handleAddMember()}
+                  >
+                    Add
+                  </Button>
+                </div>
+                {memberError && <p style={{ fontSize: "0.82rem", color: "#dc2626" }}>{memberError}</p>}
+
+                {/* Member list */}
+                <div>
+                  <h4 style={{ fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-subtle)", marginBottom: 10 }}>
+                    Group Members ({activeGroup.memberships?.length ?? 0})
+                  </h4>
+                  {!activeGroup.memberships || activeGroup.memberships.length === 0 ? (
+                    <p style={{ fontSize: "0.82rem", color: "var(--text-subtle)", padding: "12px 0", textAlign: "center" }}>No member details available.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 220, overflowY: "auto" }}>
+                      {activeGroup.memberships.map((m) => (
+                        <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface-glass-dark)", borderRadius: "var(--radius-sm)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, color: "#fff" }}>
+                              {m.user?.name?.charAt(0) ?? "?"}
+                            </div>
+                            <div>
+                              <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>{m.user?.name ?? m.userId.slice(0, 12)}</p>
+                              {m.user?.email && <p style={{ fontSize: "0.72rem", color: "var(--text-subtle)" }}>{m.user.email}</p>}
+                            </div>
+                          </div>
+                          {isCR && m.userId !== user?.id && (
+                            <button
+                              onClick={() => handleRemoveMember(m.userId)}
+                              title="Remove member"
+                              style={{ border: "none", background: "transparent", cursor: "pointer", color: "#dc2626", padding: 4 }}
+                            >
+                              <UserMinus size={15} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <Button variant="ghost" onClick={() => setShowMembersModal(false)}>Close</Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
+

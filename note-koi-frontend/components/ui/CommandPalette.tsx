@@ -127,7 +127,7 @@ export function CommandPalette() {
               <AnimatePresence mode="popLayout">
                 {filtered.map((item, i) => (
                   <motion.button
-                    key={item.href}
+                    key={`${item.href}-${item.label}`}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 8 }}

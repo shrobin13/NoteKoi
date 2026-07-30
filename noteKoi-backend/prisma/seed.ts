@@ -3,6 +3,66 @@ import prisma from "../src/lib/prisma.js";
 import { Role, VerificationStatus, AdminRole } from "../generated/prisma/index.js";
 import { env } from "../src/config/index.js";
 
+async function ensureSeedHierarchy(collegeName: string) {
+  let college = await prisma.college.findFirst({ where: { name: collegeName } });
+  if (!college) {
+    console.log(`🏫 Creating college "${collegeName}"...`);
+    college = await prisma.college.create({ data: { name: collegeName } });
+  }
+
+  let department = await prisma.department.findFirst({
+    where: { collegeId: college.id, name: "Computer Science" },
+  });
+  if (!department) {
+    console.log(`🏛️ Creating department "Computer Science" under ${college.name}...`);
+    department = await prisma.department.create({
+      data: { name: "Computer Science", collegeId: college.id },
+    });
+  }
+
+  let semester = await prisma.semester.findFirst({
+    where: { departmentId: department.id, name: "Fall 2026" },
+  });
+  if (!semester) {
+    console.log(`📚 Creating semester "Fall 2026"...`);
+    semester = await prisma.semester.create({
+      data: { name: "Fall 2026", departmentId: department.id },
+    });
+  }
+
+  let course = await prisma.course.findFirst({
+    where: { semesterId: semester.id, name: "Introduction to Computing" },
+  });
+  if (!course) {
+    console.log(`💻 Creating course "Introduction to Computing"...`);
+    course = await prisma.course.create({
+      data: { name: "Introduction to Computing", semesterId: semester.id },
+    });
+  }
+
+  let session = await prisma.session.findFirst({
+    where: { courseId: course.id, name: "2026/2027" },
+  });
+  if (!session) {
+    console.log(`🗓️ Creating session "2026/2027"...`);
+    session = await prisma.session.create({
+      data: { name: "2026/2027", courseId: course.id },
+    });
+  }
+
+  let classroomUnit = await prisma.classroomUnit.findFirst({
+    where: { departmentId: department.id, sessionId: session.id },
+  });
+  if (!classroomUnit) {
+    console.log(`🧩 Creating classroom unit for ${department.name} / ${session.name}...`);
+    classroomUnit = await prisma.classroomUnit.create({
+      data: { departmentId: department.id, sessionId: session.id },
+    });
+  }
+
+  return { college, department, semester, course, session, classroomUnit };
+}
+
 async function main() {
   console.log("🌱 Starting Super Admin Seeder...");
 
@@ -22,6 +82,12 @@ async function main() {
     });
     console.log(`✅ Default college created with ID: ${systemCollege.id}`);
   }
+
+  const hierarchy = await ensureSeedHierarchy(
+    systemCollege.name === "System Administration College"
+      ? "Faculty of Science"
+      : systemCollege.name,
+  );
 
   // 2. Check if Super Admin user already exists by email or OWNER_ADMIN role
   let ownerAdmin = await prisma.user.findFirst({
@@ -45,7 +111,7 @@ async function main() {
         passwordHash,
         role: Role.OWNER_ADMIN,
         verificationStatus: VerificationStatus.VERIFIED,
-        collegeId: ownerAdmin.collegeId || systemCollege.id,
+        collegeId: ownerAdmin.collegeId || hierarchy.college.id,
       },
     });
   } else {
@@ -57,7 +123,7 @@ async function main() {
         passwordHash,
         role: Role.OWNER_ADMIN,
         verificationStatus: VerificationStatus.VERIFIED,
-        collegeId: systemCollege.id,
+        collegeId: hierarchy.college.id,
       },
     });
   }
@@ -87,9 +153,11 @@ async function main() {
   console.log("\n🎉 Super Admin Seeding Completed Successfully!");
   console.log("───────────────────────────────────────────");
   console.log(`  Name:     ${ownerAdmin.name}`);
-  console.log(`  Email:    ${ownerAdmin.email}`);
+  console.log(`  Email:    ${adminEmail}`);
   console.log(`  Role:     ${ownerAdmin.role}`);
   console.log(`  Password: ${adminPassword}`);
+  console.log(`  College:  ${hierarchy.college.name}`);
+  console.log(`  Classroom Unit: ${hierarchy.classroomUnit.id}`);
   console.log("───────────────────────────────────────────");
 }
 

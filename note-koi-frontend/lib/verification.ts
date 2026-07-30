@@ -18,3 +18,8 @@ export async function approveVerification(requestId: string): Promise<Verificati
   const { data } = await apiClient.post(`/api/verification/approve/${requestId}`);
   return data.data as VerificationRequest;
 }
+
+export async function rejectVerification(requestId: string): Promise<VerificationRequest> {
+  const { data } = await apiClient.post(`/api/verification/reject/${requestId}`);
+  return data.data as VerificationRequest;
+}

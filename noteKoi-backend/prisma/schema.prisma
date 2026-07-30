@@ -29,6 +29,7 @@ enum Role {
 enum VerificationStatus {
   PENDING
   VERIFIED
+  REJECTED
 }
 
 enum Visibility {

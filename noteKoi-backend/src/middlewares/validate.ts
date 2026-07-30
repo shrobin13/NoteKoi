@@ -19,7 +19,16 @@ export function validate(
         new ApiError(400, "Validation failed", "VALIDATION_ERROR"),
       );
     }
-    (req as any)[target] = result.data;
+
+    if (target === "body" || target === "params" || target === "query") {
+      Object.defineProperty(req, target, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: result.data,
+      });
+    }
+
     next();
   };
 }
@@ -42,7 +51,16 @@ export function validateWithDetails(
         errors: formatted.fieldErrors,
       });
     }
-    (req as any)[target] = result.data;
+
+    if (target === "body" || target === "params" || target === "query") {
+      Object.defineProperty(req, target, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: result.data,
+      });
+    }
+
     next();
   };
 }

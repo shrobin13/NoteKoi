@@ -1,5 +1,5 @@
 import apiClient from "./api";
-import type { AdminStats, User } from "./types";
+import type { AdminStats, User, CRMember } from "./types";
 
 export async function getAdminStats(): Promise<AdminStats> {
   const { data } = await apiClient.get("/api/admin/stats");
@@ -25,9 +25,9 @@ export async function transferOwnership(newOwnerUserId: string): Promise<void> {
 }
 
 // ── CR Management ─────────────────────────────────────────────────────────
-export async function getCRs(classroomUnitId: string) {
+export async function getCRs(classroomUnitId: string): Promise<CRMember[]> {
   const { data } = await apiClient.get(`/api/cr/${classroomUnitId}`);
-  return data.data;
+  return data.data as CRMember[];
 }
 
 export async function assignCR(payload: {

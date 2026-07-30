@@ -9,6 +9,7 @@ import { useUIStore } from "@/store/ui";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 export default function ProfilePage() {
   const { user } = useAuthStore();

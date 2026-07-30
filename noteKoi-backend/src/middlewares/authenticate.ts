@@ -41,11 +41,8 @@ export function authenticate(opts: { requireVerified?: boolean } = {}) {
     }
 
     req.user = {
+      ...decoded,
       id: decoded.sub,
-      role: decoded.role,
-      verificationStatus: decoded.verificationStatus,
-      collegeId: decoded.collegeId,
-      classroomUnitId: decoded.classroomUnitId,
     };
 
     // INV-005: private-resource endpoints must reject unverified users

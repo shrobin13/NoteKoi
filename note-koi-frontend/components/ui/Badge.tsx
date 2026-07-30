@@ -10,7 +10,8 @@ type BadgeVariant =
   | "success"
   | "warning"
   | "error"
-  | "info";
+  | "info"
+  | "admin";
 
 interface BadgeProps {
   variant?: BadgeVariant;
@@ -34,6 +35,7 @@ const variantMap: Record<string, string> = {
   SUB_ADMIN: "badge badge-admin",
   OWNER_ADMIN: "badge badge-owner",
   STUDENT: "badge badge-other",
+  admin: "badge badge-admin",
   success: "badge badge-verified",
   warning: "badge badge-pyq",
   error: "badge" ,

@@ -30,3 +30,11 @@ export async function approveVerification(req: Request, res: Response, next: Nex
     res.json(success(result, "Verification approved"));
   } catch (err) { next(err); }
 }
+
+export async function rejectVerification(req: Request, res: Response, next: NextFunction) {
+  try {
+    const requestId = getParam(req, "requestId");
+    const result = await verificationService.rejectVerification(requestId, req.user!.id);
+    res.json(success(result, "Verification rejected"));
+  } catch (err) { next(err); }
+}

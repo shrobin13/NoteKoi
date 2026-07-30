@@ -120,7 +120,8 @@ export type Role = (typeof Role)[keyof typeof Role]
 
 export const VerificationStatus: {
   PENDING: 'PENDING',
-  VERIFIED: 'VERIFIED'
+  VERIFIED: 'VERIFIED',
+  REJECTED: 'REJECTED'
 };
 
 export type VerificationStatus = (typeof VerificationStatus)[keyof typeof VerificationStatus]

@@ -109,7 +109,7 @@ export interface VerificationRequest {
   verifiedAt?: string;
   createdAt: string;
   user?: { id: string; name: string; email: string };
-  classroomUnit?: { id: string; department?: { name: string } };
+  classroomUnit?: { id: string; department?: { name: string }; session?: { name: string } };
 }
 
 // ── CR ────────────────────────────────────────────────────────────────────

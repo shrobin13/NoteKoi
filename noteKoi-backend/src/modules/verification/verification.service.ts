@@ -112,6 +112,57 @@ export async function approveVerification(requestId: string, approverId: string)
   });
 }
 
+/**
+ * Reject a pending verification request (CR, Sub Admin, or Owner Admin).
+ */
+export async function rejectVerification(requestId: string, rejectorId: string) {
+  return prisma.$transaction(async (tx) => {
+    const request = await tx.verificationRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        user: true,
+        classroomUnit: {
+          include: { department: { select: { collegeId: true } } },
+        },
+      },
+    });
+    if (!request) throw ApiError.notFound("Verification request not found");
+
+    if (request.status !== VerificationStatus.PENDING) {
+      return { message: "Request is not in pending state", skipped: true };
+    }
+
+    const rejector = await tx.user.findUnique({ where: { id: rejectorId } });
+    if (!rejector) throw ApiError.unauthorized();
+
+    await validateApproverScope(rejector, request.classroomUnit, request.classroomUnit.department.collegeId);
+
+    const updated = await tx.verificationRequest.update({
+      where: { id: requestId },
+      data: {
+        status: VerificationStatus.REJECTED,
+        resolvedById: rejectorId,
+        resolvedAt: new Date(),
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        actorId: rejectorId,
+        action: AuditAction.VERIFY,
+        targetUserId: request.userId,
+        metadata: {
+          outcome: "REJECTED",
+          classroomUnitId: request.classroomUnitId,
+          requestId,
+        },
+      },
+    });
+
+    return { request: updated };
+  });
+}
+
 async function validateApproverScope(
   approver: { id: string; role: Role; collegeId: string },
   unit: { id: string },

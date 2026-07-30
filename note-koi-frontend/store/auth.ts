@@ -23,10 +23,10 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       setAuth: (user, accessToken, refreshToken) => {
-        // Also sync to localStorage for the axios interceptor
         if (typeof window !== "undefined") {
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", refreshToken);
+          localStorage.setItem("auth:user", JSON.stringify(user));
         }
         set({ user, accessToken, refreshToken, isAuthenticated: true });
       },
@@ -40,6 +40,7 @@ export const useAuthStore = create<AuthState>()(
         if (typeof window !== "undefined") {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
+          localStorage.removeItem("auth:user");
         }
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
       },

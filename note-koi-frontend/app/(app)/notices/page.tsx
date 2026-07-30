@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Pin, Clock, User, Plus, Trash2, X, Megaphone } from "lucide-react";
-import { getNotices, createNotice, deleteNotice } from "@/lib/notices";
+import { Bell, Pin, Clock, User, Plus, Trash2, Edit3, X, Megaphone } from "lucide-react";
+import { getNotices, createNotice, updateNotice, deleteNotice } from "@/lib/notices";
 import { useAuthStore } from "@/store/auth";
 import { useUIStore } from "@/store/ui";
 import { Card } from "@/components/ui/Card";
@@ -11,12 +11,14 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ResourceCardSkeleton } from "@/components/ui/Skeleton";
+import type { Notice } from "@/lib/types";
 
 export default function NoticesPage() {
   const { user } = useAuthStore();
   const { setBreadcrumbs } = useUIStore();
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
+  const [editingNoticeId, setEditingNoticeId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
@@ -34,18 +36,51 @@ export default function NoticesPage() {
     enabled: !!classroomUnitId,
   });
 
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingNoticeId(null);
+    setTitle("");
+    setContent("");
+    setError("");
+  };
+
+  const openCreateModal = () => {
+    setEditingNoticeId(null);
+    setTitle("");
+    setContent("");
+    setError("");
+    setShowModal(true);
+  };
+
+  const openEditModal = (notice: Notice) => {
+    setEditingNoticeId(notice.id);
+    setTitle(notice.title);
+    setContent(notice.content);
+    setError("");
+    setShowModal(true);
+  };
+
   const { mutate: handleCreate, isPending: creating } = useMutation({
     mutationFn: () => createNotice({ title, content, classroomUnitId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notices", classroomUnitId] });
-      setShowModal(false);
-      setTitle("");
-      setContent("");
-      setError("");
+      closeModal();
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { message?: string } } };
       setError(e?.response?.data?.message ?? "Failed to publish notice");
+    },
+  });
+
+  const { mutate: handleEdit, isPending: updating } = useMutation({
+    mutationFn: () => updateNotice(editingNoticeId!, { title, content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notices", classroomUnitId] });
+      closeModal();
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e?.response?.data?.message ?? "Failed to update notice");
     },
   });
 
@@ -70,7 +105,7 @@ export default function NoticesPage() {
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <Badge variant="PRIVATE">Classroom Scoped</Badge>
           {isCR && (
-            <Button variant="accent" icon={<Plus size={16} />} onClick={() => setShowModal(true)}>
+            <Button variant="accent" icon={<Plus size={16} />} onClick={openCreateModal}>
               Publish Notice
             </Button>
           )}
@@ -102,13 +137,22 @@ export default function NoticesPage() {
                     <Clock size={13} /> {new Date(notice.createdAt).toLocaleDateString()}
                   </span>
                   {isCR && (
-                    <button
-                      onClick={() => handleDelete(notice.id)}
-                      style={{ border: "none", background: "transparent", cursor: "pointer", color: "#dc2626", padding: 4 }}
-                      title="Delete Notice"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <button
+                        onClick={() => openEditModal(notice)}
+                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-subtle)", padding: 4 }}
+                        title="Edit Notice"
+                      >
+                        <Edit3 size={15} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(notice.id)}
+                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "#dc2626", padding: 4 }}
+                        title="Delete Notice"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -130,14 +174,16 @@ export default function NoticesPage() {
         </div>
       )}
 
-      {/* Publish Notice Modal */}
+      {/* Publish/Edit Notice Modal */}
       <AnimatePresence>
         {showModal && (
           <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(53,53,53,0.5)", backdropFilter: "blur(6px)" }}>
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} style={{ width: "100%", maxWidth: 520, background: "var(--surface-elevated)", borderRadius: "var(--radius-xl)", border: "1px solid var(--border-strong)", padding: 28, position: "relative" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", fontWeight: 800 }}>Publish Notice</h3>
-                <button onClick={() => setShowModal(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}><X size={18} /></button>
+                <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", fontWeight: 800 }}>
+                  {editingNoticeId ? "Edit Notice" : "Publish Notice"}
+                </h3>
+                <button onClick={closeModal} style={{ border: "none", background: "transparent", cursor: "pointer" }}><X size={18} /></button>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -157,8 +203,15 @@ export default function NoticesPage() {
                 {error && <p style={{ fontSize: "0.82rem", color: "#dc2626" }}>{error}</p>}
 
                 <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 8 }}>
-                  <Button variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>
-                  <Button variant="accent" loading={creating} onClick={() => handleCreate()}>Publish</Button>
+                  <Button variant="ghost" onClick={closeModal}>Cancel</Button>
+                  <Button
+                    variant="accent"
+                    loading={editingNoticeId ? updating : creating}
+                    disabled={!title.trim() || !content.trim()}
+                    onClick={() => (editingNoticeId ? handleEdit() : handleCreate())}
+                  >
+                    {editingNoticeId ? "Save Changes" : "Publish"}
+                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -168,3 +221,4 @@ export default function NoticesPage() {
     </motion.div>
   );
 }
+

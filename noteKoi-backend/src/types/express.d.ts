@@ -7,6 +7,8 @@ declare global {
     interface Request {
       user?: {
         id: string;
+        sub: string;
+        type: "access";
         role: Role;
         verificationStatus: VerificationStatus;
         collegeId: string;

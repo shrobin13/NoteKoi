@@ -54,8 +54,10 @@ export default function RegisterPage() {
     }
   }
 
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
   const canNext = step === 0
-    ? name.trim() && email.trim()
+    ? name.trim().length >= 2 && isValidEmail(email.trim())
     : step === 1
     ? collegeId && classroomUnitId
     : password.length >= 8 && password === confirmPw;
@@ -140,12 +142,32 @@ export default function RegisterPage() {
           >
             {step === 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                <Input label="Full Name" id="reg-name" type="text" value={name}
-                  onChange={(e) => setName(e.target.value)} placeholder="Jane Doe"
-                  leftIcon={<User size={15} />} required />
-                <Input label="Email Address" id="reg-email" type="email" value={email}
-                  onChange={(e) => setEmail(e.target.value)} placeholder="you@college.edu"
-                  leftIcon={<Mail size={15} />} required />
+                <div>
+                  <label className="input-label" htmlFor="reg-name">Full Name</label>
+                  <input
+                    id="reg-name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Jane Doe"
+                    className="input-field"
+                    style={{ width: "100%" }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="input-label" htmlFor="reg-email">Email Address</label>
+                  <input
+                    id="reg-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@college.edu"
+                    className="input-field"
+                    style={{ width: "100%" }}
+                    required
+                  />
+                </div>
               </div>
             )}
 

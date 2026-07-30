@@ -30,8 +30,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={16} /> },
   { label: "Colleges", href: "/college", icon: <Building2 size={16} /> },
   { label: "Explore Library", href: "/explore", icon: <Globe size={16} /> },
-  { label: "Notices", href: "/notices", icon: <Bell size={16} />, roles: ["STUDENT", "CR"] },
-  { label: "Discussions", href: "/discussions", icon: <MessageSquare size={16} />, roles: ["STUDENT", "CR"] },
+  { label: "Notices", href: "/notices", icon: <Bell size={16} /> },
+  { label: "Discussions", href: "/discussions", icon: <MessageSquare size={16} /> },
   { label: "Profile", href: "/profile", icon: <User size={16} /> },
 ];
 
