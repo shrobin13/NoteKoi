@@ -5,6 +5,21 @@
     "outDir": "./dist",
     "rootDir": ".",
     "target": "ES2025",
+    "paths": {
+      "@config/*": ["./src/config/*"],
+      "@auth/*": ["./src/auth/*"],
+      "@controllers/*": ["./src/controllers/*"],
+      "@middlewares/*": ["./src/middlewares/*"],
+      "@routes/*": ["./src/routes/*"],
+      "@services/*": ["./src/services/*"],
+      "@repositories/*": ["./src/repositories/*"],
+      "@validators/*": ["./src/validators/*"],
+      "@errors/*": ["./src/errors/*"],
+      "@helpers/*": ["./src/helpers/*"],
+      "@prisma/*": ["./src/prisma/*"],
+      "@types/*": ["./src/types/*"],
+      "@constants/*": ["./src/constants/*"]
+    },
     "types": [
       "node"
     ],
