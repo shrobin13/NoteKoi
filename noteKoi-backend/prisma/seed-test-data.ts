@@ -11,7 +11,7 @@ import { prisma } from "@prisma/prisma";
 const STUDENT_PASSWORD = "Student@123";
 const TEACHER_PASSWORD = "Teacher@123";
 
-async function main() {
+export default async function test_seed() {
   console.log("Creating test data...");
 
   // Get the admin user (must exist — run pnpm run seed first)
@@ -213,10 +213,3 @@ async function main() {
   console.log("Courses: DSA | DBMS | OS (CS), Calculus (Math)");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
-
-main()
-  .then(() => process.exit(0))
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });

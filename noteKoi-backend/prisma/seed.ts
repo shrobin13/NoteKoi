@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import { prisma } from "@prisma/prisma";
 import { env } from "@config/env";
+import test_seed from "./seed-test-data";
 
 async function main() {
   const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, 12);
@@ -14,6 +15,9 @@ async function main() {
       isVerified: true,
     },
   });
+
+  await test_seed();
+
 }
 
 main()
