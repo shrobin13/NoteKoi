@@ -6,7 +6,7 @@ import { getErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useUploadResourceMutation } from "@/hooks/useUploadResourceMutation";
-import { useUsersQuery } from "@/hooks/useUsersQuery";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { ResourceType, UploaderRoleSnapshot, User, Visibility } from "@/lib/types";
 
 const resourceTypeOptions: { value: ResourceType; label: string }[] = [
@@ -24,9 +24,9 @@ const visibilityOptions: { value: Visibility; label: string }[] = [
 ];
 
 export default function UploadPage() {
-  const { data: user, isLoading: isLoadingUser } = useUsersQuery();
+  const { user, isLoading, error } = useRequireAuth();
 
-  if (isLoadingUser) {
+  if (isLoading) {
     return (
       <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-8">
@@ -39,13 +39,15 @@ export default function UploadPage() {
     );
   }
 
-  if (!user) {
+  if (error || !user) {
     return (
       <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-8">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Upload</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Sign in to upload resources</h1>
-          <p className="mt-2 max-w-2xl text-slate-300">You must be signed in to share resources with NoteKoi.</p>
+          <h1 className="mt-3 text-3xl font-semibold text-white">Upload</h1>
+          <p className="mt-2 max-w-2xl text-slate-300">
+            Unable to load your account. Please try again or sign in if you are not logged in.
+          </p>
         </div>
       </section>
     );

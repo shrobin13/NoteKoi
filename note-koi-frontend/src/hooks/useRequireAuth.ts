@@ -9,10 +9,17 @@ export function useRequireAuth() {
   const { data: user, isLoading, error } = useUsersQuery();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (
+      !isLoading &&
+      !user &&
+      error &&
+      typeof error === "object" &&
+      "status" in error &&
+      (error as { status?: number }).status === 401
+    ) {
       router.push("/login");
     }
-  }, [isLoading, router, user]);
+  }, [error, isLoading, router, user]);
 
   return { user, isLoading, error };
 }

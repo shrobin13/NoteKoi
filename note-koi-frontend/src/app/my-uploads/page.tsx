@@ -5,9 +5,40 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ResourceCard } from "@/components/shared/resource-card";
 import { useMyUploadsQuery } from "@/hooks/useMyUploadsQuery";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 export default function MyUploadsPage() {
+  const { user, isLoading: isLoadingUser, error: authError } = useRequireAuth();
   const { data: resourcesData, isLoading, error } = useMyUploadsQuery(1, 100);
+
+  if (isLoadingUser) {
+    return (
+      <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">My Uploads</p>
+          <h1 className="mt-3 text-3xl font-semibold text-white">Your uploaded resources</h1>
+          <p className="mt-2 max-w-2xl text-slate-300">Loading account details...</p>
+        </div>
+        <Card className="space-y-6 border-slate-700/80 bg-slate-900/80 p-6">
+          <div className="h-60 rounded-3xl bg-slate-950/70 p-6" />
+        </Card>
+      </section>
+    );
+  }
+
+  if (authError || !user) {
+    return (
+      <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">My Uploads</p>
+          <h1 className="mt-3 text-3xl font-semibold text-white">My uploaded resources</h1>
+          <p className="mt-2 max-w-2xl text-slate-300">
+            Unable to load your uploads. Please try again or sign in if you are not authenticated.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">

@@ -4,11 +4,11 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useUsersQuery } from "@/hooks/useUsersQuery";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useLogoutMutation } from "@/hooks/useLogoutMutation";
 
 export default function ProfilePage() {
-  const { data: user, isLoading, error } = useUsersQuery();
+  const { user, isLoading, error } = useRequireAuth();
   const logoutMutation = useLogoutMutation();
 
   if (isLoading) {

@@ -3,11 +3,13 @@
 import { Card } from "@/components/ui/card";
 import { EmptyStateBlock } from "@/components/shared/empty-state-block";
 import { useNotificationsQuery } from "@/hooks/useNotificationsQuery";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 export default function NotificationsPage() {
+  const { isLoading: isLoadingUser } = useRequireAuth();
   const { data: notifications, isLoading } = useNotificationsQuery(1, 20);
 
-  if (isLoading) {
+  if (isLoadingUser || isLoading) {
     return (
       <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-8">

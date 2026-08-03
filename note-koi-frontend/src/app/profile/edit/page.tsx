@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useUsersQuery } from "@/hooks/useUsersQuery";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useUpdateCurrentUserMutation } from "@/hooks/useUpdateCurrentUserMutation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { User } from "@/lib/types";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { data: user, isLoading, error } = useUsersQuery();
+  const { user, isLoading, error } = useRequireAuth();
 
   if (isLoading) {
     return (
