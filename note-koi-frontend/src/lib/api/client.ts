@@ -28,11 +28,8 @@ export async function request<T = unknown>(input: RequestInfo, init?: RequestIni
   }
 
   if (!res.ok) {
-    const message =
-      typeof body === "object" && body !== null && "error" in body &&
-      typeof (body as { error?: { message?: string } }).error?.message === "string"
-        ? (body as { error?: { message?: string } }).error.message
-        : res.statusText || "API error";
+    const errObj = typeof body === "object" && body !== null && "error" in body ? (body as { error?: { message?: string } }).error : undefined;
+    const message = errObj?.message || res.statusText || "API error";
     const err = new Error(message) as ApiError;
     err.status = res.status;
     err.body = body;

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bell } from "lucide-react";
 import { useNotificationsQuery } from "@/hooks/useNotificationsQuery";
+import { useUserStore } from "@/store/use-user-store";
 
 interface TopBarProps {
   onOpenMobileNav: () => void;
@@ -27,6 +28,7 @@ const routeMetadata = [
 export function TopBar({ onOpenMobileNav }: TopBarProps) {
   const [query, setQuery] = useState("");
   const pathname = usePathname();
+  const role = useUserStore((state) => state.role);
   const { data: notifications, isLoading: isNotificationsLoading } = useNotificationsQuery(1, 8);
 
   const activeRoute = useMemo(
@@ -38,6 +40,8 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
     () => notifications?.filter((notification) => !notification.read).length ?? 0,
     [notifications]
   );
+
+  const isAuthenticated = role !== "GUEST";
 
   return (
     <div className="sticky top-0 z-20 border-b border-slate-800/70 bg-slate-950/95 px-4 py-4 backdrop-blur-md lg:px-8">
@@ -64,10 +68,21 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
                 </span>
               ) : null}
             </Link>
-            <div className="relative inline-flex items-center rounded-full bg-slate-900 px-3 py-2 text-sm text-slate-100">
-              <span className="text-slate-400">A</span>
-              <span className="ml-2">Profile</span>
-            </div>
+            {isAuthenticated ? (
+              <Link href="/profile" className="relative inline-flex items-center rounded-full bg-slate-900 px-3 py-2 text-sm text-slate-100 transition hover:bg-slate-800/90">
+                <span className="text-slate-400">A</span>
+                <span className="ml-2">Profile</span>
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs uppercase tracking-[0.22em] text-slate-100 transition hover:bg-slate-800/90">
+                  Sign In
+                </Link>
+                <Link href="/register/student" className="inline-flex items-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-950 transition hover:bg-emerald-400">
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
