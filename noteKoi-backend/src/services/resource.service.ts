@@ -5,9 +5,11 @@ import { findActiveSubAdminAssignmentByUser } from "../repositories/subAdminAssi
 import { $Enums, type Resource, type DeletionRequest } from "../../generated/prisma/client.js";
 import { findResourcesByUploader } from "../repositories/resource.repository.js";
 
-function mapResourceToDto(resource: Resource & { deletionRequests?: DeletionRequest[] }) {
+type ResourceWithDeletionRequests = Resource & { deletionRequests?: DeletionRequest[] };
+
+function mapResourceToDto(resource: ResourceWithDeletionRequests) {
   // Derived display label per backend-workprocess.md Section 3.9
-  let displayStatus = resource.state;
+  let displayStatus: string = resource.state;
 
   if (resource.state === $Enums.ResourceState.IN_REVIEW && resource.deletionFlag) {
     displayStatus = "IN_REVIEW_DELETION_FLAGGED";
@@ -17,7 +19,7 @@ function mapResourceToDto(resource: Resource & { deletionRequests?: DeletionRequ
     displayStatus = "DELETED";
   } else if (resource.state === $Enums.ResourceState.SUPERSEDED) {
     displayStatus = "SUPERSEDED";
-  } else if (resource.deletionRequests && resource.deletionRequests.length && resource.deletionRequests[0].status === $Enums.DeletionRequestStatus.DENIED) {
+  } else if (resource.deletionRequests?.[0]?.status === $Enums.DeletionRequestStatus.DENIED) {
     displayStatus = "DELETION_DENIED";
   }
 
@@ -40,8 +42,6 @@ function mapResourceToDto(resource: Resource & { deletionRequests?: DeletionRequ
 }
 
 export async function createResourceRecord(input: {
-  uploaderId: string;
-  uploaderRoleSnapshot: $Enums.Role;
   resourceType: $Enums.ResourceType;
   title: string;
   description?: string | null;
@@ -49,13 +49,16 @@ export async function createResourceRecord(input: {
   courseId: string;
   departmentId: string;
   sessionId?: string | null;
-  visibility: $Enums.Visibility;
+  visibility?: $Enums.Visibility;
   collegeId?: string | null;
   fileUrl?: string | null;
   youtubeUrl?: string | null;
   contentHash?: string | null;
-}) {
-  const uploader = await findUserById(input.uploaderId);
+}, actor?: { userId?: string; role?: string | null }) {
+  const derivedUploaderId = actor?.userId ?? (input as any).uploaderId;
+  const derivedUploaderRole = (actor?.role ?? (input as any).uploaderRoleSnapshot) as $Enums.Role | undefined;
+
+  const uploader = await findUserById(derivedUploaderId ?? "");
   if (!uploader) {
     throw new AppError("Uploader not found", 401, "UNAUTHENTICATED");
   }
@@ -74,7 +77,7 @@ export async function createResourceRecord(input: {
   }
 
   // Enforce uploader-specific rules from backend-workprocess.md
-  let finalVisibility = input.visibility;
+  let finalVisibility = input.visibility ?? $Enums.Visibility.COLLEGE;
   let finalCollegeId = input.collegeId ?? null;
 
   if (uploader.role === $Enums.Role.STUDENT) {
@@ -148,10 +151,9 @@ export async function createResourceRecord(input: {
       : uploader.role === $Enums.Role.SUB_ADMIN && finalVisibility === $Enums.Visibility.PLATFORM
       ? $Enums.ResourceState.APPROVED
       : $Enums.ResourceState.PENDING;
-
   return createResource({
-    uploader: { connect: { id: input.uploaderId } },
-    uploaderRoleSnapshot: input.uploaderRoleSnapshot,
+    uploader: { connect: { id: derivedUploaderId } },
+    uploaderRoleSnapshot: derivedUploaderRole ?? uploader.role,
     resourceType: input.resourceType,
     title: input.title,
     description: input.description ?? null,
@@ -166,6 +168,63 @@ export async function createResourceRecord(input: {
     contentHash: input.contentHash ?? null,
     state,
   });
+}
+
+export async function listResources(actor: { userId?: string; role?: string; collegeId?: string | null; departmentId?: string | null; sessionId?: string | null } | null, filters: { q?: string; resourceType?: string; sessionId?: string; visibility?: string; includeOtherColleges?: boolean }, page = 1, limit = 20) {
+  const skip = (page - 1) * limit;
+  const where: Record<string, unknown> = { state: $Enums.ResourceState.APPROVED };
+
+  if (filters.q) {
+    where.OR = [
+      { title: { contains: filters.q, mode: "insensitive" } },
+      { description: { contains: filters.q, mode: "insensitive" } },
+    ];
+  }
+
+  if (filters.resourceType) {
+    where.resourceType = filters.resourceType;
+  }
+
+  if (filters.sessionId) {
+    where.sessionId = filters.sessionId;
+  }
+
+  if (filters.visibility) {
+    where.visibility = filters.visibility;
+  }
+
+  const role = actor?.role;
+  if (role === $Enums.Role.PLATFORM_ADMIN) {
+    // platform admin sees all approved resources
+  } else if (role === $Enums.Role.SUB_ADMIN) {
+    where.OR = [
+      { visibility: $Enums.Visibility.PLATFORM },
+      { visibility: $Enums.Visibility.COLLEGE, collegeId: actor?.collegeId ?? null },
+    ];
+  } else if (role === $Enums.Role.STUDENT || role === $Enums.Role.TEACHER) {
+    const baseConditions: Array<Record<string, unknown>> = [{ visibility: $Enums.Visibility.PLATFORM }];
+    if (actor?.collegeId) {
+      baseConditions.push({ visibility: $Enums.Visibility.COLLEGE, collegeId: actor.collegeId });
+      if (filters.includeOtherColleges) {
+        baseConditions.push({ visibility: $Enums.Visibility.COLLEGE });
+      }
+    }
+    where.OR = baseConditions;
+  } else {
+    where.visibility = $Enums.Visibility.PLATFORM;
+  }
+
+  const { items, total } = await (await import("../repositories/resource.repository.js")).findResourcesByFilters(where, skip, limit);
+
+  return {
+    data: items.map(mapResourceToDto),
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 }
 
 export async function listMyUploads(actor: { userId?: string }, page = 1, limit = 20) {
@@ -195,14 +254,16 @@ export async function getResourceById(actor: { userId?: string; role?: string; c
     throw new AppError("Resource not found", 404, "NOT_FOUND");
   }
 
+  const typedResource = resource as ResourceWithDeletionRequests;
+
   // Uploader may always view their own resource
   if (actor?.userId && actor.userId === resource.uploaderId) {
-    return mapResourceToDto(resource as any);
+    return mapResourceToDto(typedResource);
   }
 
   // Platform Admin may view everything
   if (actor?.role === $Enums.Role.PLATFORM_ADMIN) {
-    return mapResourceToDto(resource as any);
+    return mapResourceToDto(typedResource);
   }
 
   // If resource is not APPROVED, only uploader/moderator/platform-admin can view
@@ -211,7 +272,7 @@ export async function getResourceById(actor: { userId?: string; role?: string; c
     if (actor?.role === $Enums.Role.SUB_ADMIN) {
       const assignment = await (await import("../repositories/subAdminAssignment.repository.js")).findActiveSubAdminAssignmentByUser(actor.userId ?? "");
       if (assignment && assignment.collegeId === resource.collegeId) {
-        return mapResourceToDto(resource as any);
+        return mapResourceToDto(typedResource);
       }
     }
 
@@ -219,7 +280,7 @@ export async function getResourceById(actor: { userId?: string; role?: string; c
     if (actor?.role === $Enums.Role.STUDENT) {
       const assignment = await (await import("../repositories/crCoCrAssignment.repository.js")).findActiveCrCoCrAssignmentByScope(actor.userId ?? "", resource.departmentId, resource.sessionId ?? "");
       if (assignment) {
-        return mapResourceToDto(resource as any);
+        return mapResourceToDto(typedResource);
       }
     }
 
@@ -228,7 +289,7 @@ export async function getResourceById(actor: { userId?: string; role?: string; c
 
   // Resource is APPROVED: apply visibility matrix from user-flow §0.3
   if (resource.visibility === $Enums.Visibility.PLATFORM) {
-    return mapResourceToDto(resource as any);
+    return mapResourceToDto(typedResource);
   }
 
   // visibility = COLLEGE
@@ -238,25 +299,25 @@ export async function getResourceById(actor: { userId?: string; role?: string; c
 
   // Platform Admin already handled; Sub Admin may read all college resources (full for own college, read-only for others)
   if (actor.role === $Enums.Role.SUB_ADMIN) {
-    return mapResourceToDto(resource as any);
+    return mapResourceToDto(typedResource);
   }
 
   // CR/Co-CR: full for own Dept+Session
   if (actor.role === $Enums.Role.STUDENT) {
     const crAssignment = await (await import("../repositories/crCoCrAssignment.repository.js")).findActiveCrCoCrAssignmentByScope(actor.userId ?? "", resource.departmentId, resource.sessionId ?? "");
     if (crAssignment) {
-      return mapResourceToDto(resource as any);
+      return mapResourceToDto(typedResource);
     }
   }
 
   // Student/Teacher default view: own college allowed; other college only if includeOtherColleges true
   if ((actor.role === $Enums.Role.STUDENT || actor.role === $Enums.Role.TEACHER)) {
     if (actor.collegeId && resource.collegeId && actor.collegeId === resource.collegeId) {
-      return mapResourceToDto(resource as any);
+      return mapResourceToDto(typedResource);
     }
 
     if (includeOtherColleges) {
-      return mapResourceToDto(resource as any);
+      return mapResourceToDto(typedResource);
     }
 
     throw new AppError("Forbidden", 403, "FORBIDDEN");
@@ -287,7 +348,7 @@ export async function updateResourceMetadata(actor: { userId?: string }, id: str
     tags: payload.tags,
   });
 
-  return mapResourceToDto(updated as any);
+  return mapResourceToDto(updated);
 }
 
 export async function reassignResource(actor: { userId?: string; role?: string; collegeId?: string | null; departmentId?: string | null }, id: string, payload: { courseId: string; departmentId: string; sessionId?: string }) {
@@ -337,7 +398,44 @@ export async function reassignResource(actor: { userId?: string; role?: string; 
   // Perform transaction: update resource and invalidate pending promotion recommendations
   const updated = await (await import("../repositories/resource.repository.js")).reassignResourceWithInvalidation(id, payload.courseId, payload.departmentId, payload.sessionId ?? null, "structural_edit");
 
-  return mapResourceToDto(updated as any);
+  return mapResourceToDto(updated);
+}
+
+export async function getResourceVersions(actor: { userId?: string; role?: string; collegeId?: string | null; departmentId?: string | null; sessionId?: string | null } | null, id: string) {
+  const resource = await (await import("../repositories/resource.repository.js")).findResourceById(id);
+  if (!resource) {
+    throw new AppError("Resource not found", 404, "NOT_FOUND");
+  }
+
+  if (actor?.userId && actor.userId === resource.uploaderId) {
+    const versions = await (await import("../repositories/resource.repository.js")).findResourceVersions(id);
+    return versions.map(mapResourceToDto);
+  }
+
+  if (actor?.role === $Enums.Role.PLATFORM_ADMIN) {
+    const versions = await (await import("../repositories/resource.repository.js")).findResourceVersions(id);
+    return versions.map(mapResourceToDto);
+  }
+
+  if (resource.state !== $Enums.ResourceState.APPROVED) {
+    throw new AppError("Forbidden", 403, "FORBIDDEN");
+  }
+
+  if (resource.visibility === $Enums.Visibility.PLATFORM) {
+    const versions = await (await import("../repositories/resource.repository.js")).findResourceVersions(id);
+    return versions.map(mapResourceToDto);
+  }
+
+  if (!actor) {
+    throw new AppError("Authentication required to view version history", 401, "UNAUTHENTICATED");
+  }
+
+  if (actor.role === $Enums.Role.SUB_ADMIN || (actor.role === $Enums.Role.STUDENT && await (await import("../repositories/crCoCrAssignment.repository.js")).findActiveCrCoCrAssignmentByScope(actor.userId ?? "", resource.departmentId, resource.sessionId ?? ""))) {
+    const versions = await (await import("../repositories/resource.repository.js")).findResourceVersions(id);
+    return versions.map(mapResourceToDto);
+  }
+
+  throw new AppError("Forbidden", 403, "FORBIDDEN");
 }
 
 export async function createResourceVersion(actor: { userId?: string; role?: string; collegeId?: string | null }, id: string, payload: { title?: string; description?: string | null; tags?: string[]; fileUrl?: string | null; youtubeUrl?: string | null; sessionId?: string }) {
@@ -389,20 +487,20 @@ export async function createResourceVersion(actor: { userId?: string; role?: str
   const created = await (await import("../repositories/resource.repository.js")).createResourceVersion({
     rootResourceId: rootId,
     uploaderId: actor.userId,
-    uploaderRoleSnapshot: actor.role as any,
-    resourceType: resourceType as any,
+    uploaderRoleSnapshot: actor.role as $Enums.Role,
+    resourceType: resourceType as $Enums.ResourceType,
     title: payload.title ?? existing.title,
     description: payload.description ?? existing.description ?? null,
     tags: payload.tags ?? existing.tags ?? [],
     courseId: inheritCourseId,
     departmentId: inheritDepartmentId,
     sessionId: inheritSessionId ?? undefined,
-    visibility: inheritVisibility as any,
+    visibility: inheritVisibility as $Enums.Visibility,
     collegeId: existing.collegeId ?? undefined,
     fileUrl: payload.fileUrl ?? null,
     youtubeUrl: payload.youtubeUrl ?? null,
     contentHash: null,
   });
 
-  return mapResourceToDto(created as any);
+  return mapResourceToDto(created);
 }

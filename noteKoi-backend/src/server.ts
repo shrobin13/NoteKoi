@@ -17,6 +17,12 @@ import { requestLogger } from "./middlewares/requestLogger.js";
 import { logger } from "./config/logger.js";
 import resourceRoutes from "./routes/resource.routes.js";
 import moderationRoutes from "./routes/moderation.routes.js";
+import reportRoutes from "./routes/report.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import { csrfGuard } from "./middlewares/csrfGuard.js";
+import promotionRoutes from "./routes/promotion.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
+import adminOverrideRoutes from "./routes/adminOverride.routes.js";
 
 const app = express();
 
@@ -33,6 +39,8 @@ app.use(cookieParser());
 app.use(requestLogger);
 
 app.use("/api/v1/auth", authRoutes);
+// enforce CSRF on all subsequent state-changing routes
+app.use(csrfGuard);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/colleges", collegeRoutes);
 app.use("/api/v1/departments", departmentRoutes);
@@ -42,6 +50,11 @@ app.use("/api/v1", verificationRoutes);
 app.use("/api/v1", roleRoutes);
 app.use("/api/v1", resourceRoutes);
 app.use("/api/v1", moderationRoutes);
+app.use("/api/v1", reportRoutes);
+app.use("/api/v1", notificationRoutes);
+app.use("/api/v1", promotionRoutes);
+app.use("/api/v1", analyticsRoutes);
+app.use("/api/v1", adminOverrideRoutes);
 app.use("/api/v1", healthRoutes);
 
 app.use(errorHandler);

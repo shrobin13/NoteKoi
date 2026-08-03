@@ -90,7 +90,7 @@ export async function requestDeletion(uploaderId: string, resourceId: string) {
 }
 
 export async function deletionDecision(requestId: string, decidedById: string, approve: boolean, reason?: string) {
-  const dr = await decideDeletionRequest(requestId, decidedById, approve, reason ?? null);
+  const dr = await decideDeletionRequest(requestId, decidedById, approve, reason ?? undefined);
   return dr;
 }
 

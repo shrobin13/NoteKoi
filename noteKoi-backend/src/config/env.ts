@@ -23,8 +23,8 @@ const envSchema = z.object({
 
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
-  console.error("Environment validation failed", parsed.error.format());
-  throw new Error("Invalid environment configuration");
+  const errorDetails = JSON.stringify(parsed.error.format(), null, 2);
+  throw new Error(`Invalid environment configuration: ${errorDetails}`);
 }
 
 export const env = parsed.data;

@@ -40,6 +40,23 @@ export function findResourceById(id: string) {
   });
 }
 
+export async function findResourcesByFilters(where: Record<string, unknown>, skip = 0, take = 20) {
+  const items = await prisma.resource.findMany({
+    where: where as Prisma.ResourceWhereInput,
+    orderBy: { createdAt: 'desc' },
+    skip,
+    take,
+    include: {
+      college: { select: { id: true, name: true } },
+      deletionRequests: { orderBy: { requestedAt: 'desc' }, take: 1 },
+    },
+  });
+
+  const total = await prisma.resource.count({ where: where as Prisma.ResourceWhereInput });
+
+  return { items, total };
+}
+
 export function updateResourceMetadata(id: string, data: { title?: string; description?: string | null; tags?: string[] }) {
   return prisma.resource.update({
     where: { id },
@@ -48,6 +65,13 @@ export function updateResourceMetadata(id: string, data: { title?: string; descr
       description: data.description ?? null,
       tags: data.tags ?? undefined,
     },
+  });
+}
+
+export function updateResourceVisibility(id: string, visibility: Prisma.ResourceUpdateInput["visibility"]) {
+  return prisma.resource.update({
+    where: { id },
+    data: { visibility },
   });
 }
 
@@ -84,6 +108,16 @@ export async function findLatestVersion(rootId: string) {
   });
 }
 
+export async function findResourceVersions(rootId: string) {
+  return prisma.resource.findMany({
+    where: { OR: [{ id: rootId }, { rootResourceId: rootId }] },
+    orderBy: { versionNumber: 'asc' },
+    include: {
+      uploader: { select: { id: true, email: true, role: true } },
+    },
+  });
+}
+
 export async function createResourceVersion(data: {
   rootResourceId: string;
   uploaderId: string;
@@ -114,15 +148,15 @@ export async function createResourceVersion(data: {
         rootResource: { connect: { id: data.rootResourceId } },
         versionNumber: nextVersion,
         uploader: { connect: { id: data.uploaderId } },
-        uploaderRoleSnapshot: data.uploaderRoleSnapshot as any,
-        resourceType: data.resourceType as any,
+        uploaderRoleSnapshot: data.uploaderRoleSnapshot,
+        resourceType: data.resourceType,
         title: data.title,
         description: data.description ?? null,
         tags: data.tags ?? [],
         course: { connect: { id: data.courseId } },
         department: { connect: { id: data.departmentId } },
         session: data.sessionId ? { connect: { id: data.sessionId } } : undefined,
-        visibility: data.visibility as any,
+        visibility: data.visibility,
         college: data.collegeId ? { connect: { id: data.collegeId } } : undefined,
         fileUrl: data.fileUrl ?? null,
         youtubeUrl: data.youtubeUrl ?? null,
@@ -139,7 +173,7 @@ export function updateResourceStateWithModerator(id: string, data: { state: Pris
   return prisma.resource.update({
     where: { id },
     data: {
-      state: data.state as any,
+      state: data.state,
       moderatorId: data.moderatorId ?? undefined,
       moderatorReason: data.moderatorReason ?? undefined,
       moderatorDecisionAt: data.state === $Enums.ResourceState.IN_REVIEW ? undefined : new Date(),
@@ -200,7 +234,7 @@ export async function createReportAndSetInReview(resourceId: string, reportedByI
       data: {
         resource: { connect: { id: resourceId } },
         reportedBy: { connect: { id: reportedById } },
-        reason: reason as any,
+        reason: reason as Prisma.ReportCreateInput["reason"],
         note: note ?? null,
       },
     });

@@ -1,19 +1,60 @@
 import type { Request, Response, NextFunction } from "express";
+import type { AuthenticatedRequest } from "../middlewares/authenticate.js";
 import { created, ok } from "../helpers/response.js";
 import { createResourceRecord } from "../services/resource.service.js";
 import { getResourceById } from "../services/resource.service.js";
 import { updateResourceMetadata } from "../services/resource.service.js";
 import { reassignResource } from "../services/resource.service.js";
 import { createResourceVersion } from "../services/resource.service.js";
+import { getResourceVersions } from "../services/resource.service.js";
 import fs from "fs/promises";
 import crypto from "crypto";
 import path from "path";
-import { uploadsRootPath } from "../storage/multerConfig.js";
+
+type RequestWithUser = Request & { user?: AuthenticatedRequest["user"] };
+type RequestWithUpload = RequestWithUser & { file?: Express.Multer.File };
+
+type CreateResourceRecordInput = Parameters<typeof createResourceRecord>[0];
 
 export async function createResourceHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const resource = await createResourceRecord(req.body);
+    const actor = ((req as RequestWithUser).user ?? {}) as { userId?: string; role?: string };
+    const body = req.body as Record<string, unknown>;
+    const input: CreateResourceRecordInput = {
+      resourceType: body.resourceType as CreateResourceRecordInput["resourceType"],
+      title: body.title as string,
+      description: (body.description as string) ?? null,
+      tags: (body.tags as any) ?? [],
+      courseId: body.courseId as string,
+      departmentId: body.departmentId as string,
+      sessionId: (body.sessionId as string) ?? undefined,
+      visibility: (body.visibility as CreateResourceRecordInput["visibility"]) ?? undefined,
+      collegeId: (body.collegeId as string) ?? undefined,
+      fileUrl: (body.fileUrl as string) ?? null,
+      youtubeUrl: (body.youtubeUrl as string) ?? null,
+      contentHash: (body.contentHash as string) ?? null,
+    };
+
+    const resource = await createResourceRecord(input, actor);
     return res.status(201).json(created(resource));
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function listResourcesHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const actor = ((req as RequestWithUser).user ?? null) as { userId?: string; role?: string; collegeId?: string | null; departmentId?: string | null; sessionId?: string | null } | null;
+    const page = typeof req.query.page === "string" ? Number(req.query.page) : 1;
+    const limit = typeof req.query.limit === "string" ? Number(req.query.limit) : 20;
+    const q = typeof req.query.q === "string" ? req.query.q : undefined;
+    const resourceType = typeof req.query.resourceType === "string" ? req.query.resourceType : undefined;
+    const sessionId = typeof req.query.sessionId === "string" ? req.query.sessionId : undefined;
+    const visibility = typeof req.query.visibility === "string" ? req.query.visibility : undefined;
+    const includeOtherColleges = req.query.includeOtherColleges === "true" || req.query.includeOtherColleges === "1";
+
+    const result = await (await import("../services/resource.service.js")).listResources(actor, { q, resourceType, sessionId, visibility, includeOtherColleges }, page, limit);
+    return res.json(ok(result.data, result.meta));
   } catch (error) {
     return next(error);
   }
@@ -21,40 +62,39 @@ export async function createResourceHandler(req: Request, res: Response, next: N
 
 export async function createResourceUploadHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const file = (req as any).file;
-    // assemble input for service
-    const auth = (req as any).user || {};
+    const uploadReq = req as RequestWithUpload;
+    const file = uploadReq.file;
+    const auth = (uploadReq.user ?? null) as { userId?: string; role?: string } | null;
+    const body = req.body as Record<string, unknown>;
 
-    const tagsRaw = (req as any).body?.tags;
+    const tagsRaw = body?.tags;
     const tags = typeof tagsRaw === "string" ? tagsRaw.split(",").map((s) => s.trim()).filter(Boolean) : Array.isArray(tagsRaw) ? tagsRaw : [];
 
     const relativePath = file ? path.relative(process.cwd(), file.path) : undefined;
     const fileUrl = relativePath ? `/${relativePath.replaceAll(path.sep, "/")}` : undefined;
 
-    let contentHash: string | undefined;
+    let contentHash: string | null = null;
     if (file) {
       const buf = await fs.readFile(file.path);
       contentHash = crypto.createHash("sha256").update(buf).digest("hex");
     }
 
-    const input = {
-      uploaderId: auth.userId ?? req.body.uploaderId,
-      uploaderRoleSnapshot: (auth.role ?? req.body.uploaderRoleSnapshot) as any,
-      resourceType: req.body.resourceType,
-      title: req.body.title,
-      description: req.body.description ?? null,
+    const input: CreateResourceRecordInput = {
+      resourceType: body.resourceType as CreateResourceRecordInput["resourceType"],
+      title: body.title as string,
+      description: (body.description as string) ?? null,
       tags,
-      courseId: req.body.courseId,
-      departmentId: req.body.departmentId,
-      sessionId: req.body.sessionId ?? undefined,
-      visibility: req.body.visibility,
-      collegeId: req.body.collegeId ?? undefined,
+      courseId: body.courseId as string,
+      departmentId: body.departmentId as string,
+      sessionId: (body.sessionId as string) ?? undefined,
+      visibility: (body.visibility as CreateResourceRecordInput["visibility"]) ?? undefined,
+      collegeId: (body.collegeId as string) ?? undefined,
       fileUrl: fileUrl ?? null,
-      youtubeUrl: req.body.youtubeUrl ?? null,
-      contentHash: contentHash ?? null,
+      youtubeUrl: (body.youtubeUrl as string) ?? null,
+      contentHash,
     };
 
-    const resource = await createResourceRecord(input as any);
+    const resource = await createResourceRecord(input, auth ?? undefined);
     return res.status(201).json(created(resource));
   } catch (error) {
     return next(error);
@@ -65,7 +105,7 @@ export async function getMyUploadsHandler(req: Request, res: Response, next: Nex
   try {
     const page = typeof req.query.page === "string" ? Number(req.query.page) : undefined;
     const limit = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
-    const actor = (req as any).user || {};
+    const actor = ((req as RequestWithUser).user ?? {}) as { userId?: string };
 
     const result = await (await import("../services/resource.service.js")).listMyUploads(actor, page ?? 1, limit ?? 20);
     return res.json(ok(result.data, result.meta));
@@ -80,7 +120,7 @@ export async function getResourceHandler(req: Request, res: Response, next: Next
     const includeOtherColleges = req.query?.includeOtherColleges === "true" || req.query?.includeOtherColleges === "1";
 
     // Optional authentication: verify access token if present
-    let actor: any = null;
+    let actor: AuthenticatedRequest["user"] | null = null;
     try {
       const { ACCESS_TOKEN_COOKIE } = await import("../config/cookies.js");
       const { verifyAccessToken } = await import("../auth/jwt.js");
@@ -88,7 +128,7 @@ export async function getResourceHandler(req: Request, res: Response, next: Next
       if (token && typeof token === "string") {
         actor = verifyAccessToken(token);
       }
-    } catch (e) {
+    } catch {
       // ignore token verification errors and treat as guest
     }
 
@@ -99,11 +139,22 @@ export async function getResourceHandler(req: Request, res: Response, next: Next
   }
 }
 
+export async function getResourceVersionsHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = typeof req.params.id === "string" ? req.params.id : "";
+    const actor = ((req as RequestWithUser).user ?? null) as { userId?: string; role?: string; collegeId?: string | null; departmentId?: string | null; sessionId?: string | null } | null;
+    const versions = await getResourceVersions(actor, id);
+    return res.json(ok(versions));
+  } catch (error) {
+    return next(error);
+  }
+}
+
 export async function updateResourceMetadataHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const id = typeof req.params.id === "string" ? req.params.id : "";
     const payload = req.body;
-    const actor = (req as any).user || {};
+    const actor = ((req as RequestWithUser).user ?? {}) as { userId?: string };
 
     const updated = await updateResourceMetadata(actor, id, payload);
     return res.json(ok(updated));
@@ -116,7 +167,7 @@ export async function reassignResourceHandler(req: Request, res: Response, next:
   try {
     const id = typeof req.params.id === "string" ? req.params.id : "";
     const payload = req.body;
-    const actor = (req as any).user || {};
+    const actor = ((req as RequestWithUser).user ?? {}) as { userId?: string; role?: string; collegeId?: string | null; departmentId?: string | null };
 
     const updated = await reassignResource(actor, id, payload);
     return res.json(ok(updated));
@@ -129,7 +180,7 @@ export async function createResourceVersionHandler(req: Request, res: Response, 
   try {
     const id = typeof req.params.id === "string" ? req.params.id : "";
     const payload = req.body;
-    const actor = (req as any).user || {};
+    const actor = ((req as RequestWithUser).user ?? {}) as { userId?: string; role?: string; collegeId?: string | null };
 
     const created = await createResourceVersion(actor, id, payload);
     return res.status(201).json(created);

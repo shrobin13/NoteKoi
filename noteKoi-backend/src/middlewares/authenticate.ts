@@ -33,7 +33,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
     }
 
     return next();
-  } catch (error) {
+  } catch {
     return next(new AppError("Invalid or expired authentication token", 401, "UNAUTHENTICATED"));
   }
 }
