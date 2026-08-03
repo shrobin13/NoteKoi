@@ -1,28 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import { login, refreshSession, forgotPassword, resetPassword } from "../services/auth.service.js";
 import { ok } from "../helpers/response.js";
-import { ACCESS_TOKEN_COOKIE, CSRF_COOKIE, REFRESH_TOKEN_COOKIE, COOKIE_OPTIONS } from "../config/cookies.js";
-import crypto from "crypto";
+import { clearAuthCookies, setAuthCookies, setCsrfCookie } from "../auth/cookies.js";
 
-function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
-  res.cookie(ACCESS_TOKEN_COOKIE, accessToken, {
-    ...COOKIE_OPTIONS,
-    maxAge: 1000 * 60 * 15,
-  });
-  res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
-    ...COOKIE_OPTIONS,
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-  });
-}
-
-function setCsrfCookie(res: Response) {
-  const csrfToken = crypto.randomBytes(24).toString("hex");
-  res.cookie(CSRF_COOKIE, csrfToken, {
-    ...COOKIE_OPTIONS,
-    httpOnly: false,
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-  });
-}
 
 export async function loginHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -40,7 +20,7 @@ export async function loginHandler(req: Request, res: Response, next: NextFuncti
 
 export async function refreshHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE];
+    const refreshToken = req.cookies?.["refresh_token"];
     if (!refreshToken || typeof refreshToken !== "string") {
       return res.status(401).json({ success: false, error: { code: "UNAUTHENTICATED", message: "Refresh token missing" } });
     }
@@ -77,9 +57,7 @@ export async function resetPasswordHandler(req: Request, res: Response, next: Ne
 
 export async function logoutHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    res.cookie(ACCESS_TOKEN_COOKIE, "", { ...COOKIE_OPTIONS, maxAge: 0 });
-    res.cookie(REFRESH_TOKEN_COOKIE, "", { ...COOKIE_OPTIONS, maxAge: 0 });
-    res.cookie(CSRF_COOKIE, "", { ...COOKIE_OPTIONS, httpOnly: false, maxAge: 0 });
+    clearAuthCookies(res);
     return res.status(200).json(ok({ message: "Logged out" }));
   } catch (error) {
     return next(error);

@@ -1,9 +1,10 @@
 import { AppError } from "../errors/app.error.js";
 import { comparePassword, hashPassword } from "../auth/password.js";
-import { createUser, findUserByEmail, findUserById } from "../repositories/user.repository.js";
+import { createUser, findUserByEmail, findUserById, updateUserPassword } from "../repositories/user.repository.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken, verifyPasswordResetToken, signPasswordResetToken, type TokenPayload } from "../auth/jwt.js";
 import { $Enums } from "../../generated/prisma/client.js";
-import { updateUserPassword } from "../repositories/user.repository.js";
+import { sendMail } from "../mail/mail.js";
+import { env } from "../config/env.js";
 
 function buildUserDto(user: {
   id: string;
@@ -98,7 +99,15 @@ export async function forgotPassword(email: string) {
   };
 
   const resetToken = signPasswordResetToken(payload);
-  return resetToken;
+  const resetUrl = `${env.CORS_ORIGIN.replace(/\/+$/, "")}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+  await sendMail(
+    user.email,
+    "Password Reset Request",
+    `<p>You requested a password reset. Use the link below to reset your password:</p><p><a href="${resetUrl}">Reset your password</a></p><p>If you did not request this, please ignore this email.</p>`,
+  );
+
+  return;
 }
 
 export async function resetPassword(token: string, newPassword: string) {

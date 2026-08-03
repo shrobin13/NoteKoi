@@ -1,0 +1,18 @@
+import type { Role } from "../../generated/prisma/client.js";
+
+export type PermissionName =
+  | "MANAGE_COLLEGES"
+  | "MANAGE_DEPARTMENTS"
+  | "MANAGE_SESSIONS"
+  | "MANAGE_COURSES"
+  | "VIEW_VERIFICATION_QUEUE"
+  | "MANAGE_ROLE_ASSIGNMENTS";
+
+export const permissionMap: Record<PermissionName, Role[]> = {
+  MANAGE_COLLEGES: ["PLATFORM_ADMIN"],
+  MANAGE_DEPARTMENTS: ["PLATFORM_ADMIN"],
+  MANAGE_SESSIONS: ["PLATFORM_ADMIN"],
+  MANAGE_COURSES: ["PLATFORM_ADMIN"],
+  VIEW_VERIFICATION_QUEUE: ["STUDENT", "SUB_ADMIN"],
+  MANAGE_ROLE_ASSIGNMENTS: ["PLATFORM_ADMIN", "SUB_ADMIN"],
+};

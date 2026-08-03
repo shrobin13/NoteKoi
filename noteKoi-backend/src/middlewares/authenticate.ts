@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { verifyAccessToken } from "../auth/jwt.js";
 import { AppError } from "../errors/app.error.js";
-import { ACCESS_TOKEN_COOKIE } from "../config/cookies.js";
+import { ACCESS_TOKEN_COOKIE, CSRF_COOKIE, CSRF_HEADER } from "../config/cookies.js";
 
 export type AuthenticatedRequest = Request & {
   user: {
@@ -22,6 +22,16 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
     const payload = verifyAccessToken(token);
     (req as AuthenticatedRequest).user = payload;
+
+    if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS") {
+      const csrfCookie = req.cookies?.[CSRF_COOKIE];
+      const csrfHeader = req.header(CSRF_HEADER);
+
+      if (!csrfCookie || typeof csrfCookie !== "string" || !csrfHeader || csrfHeader !== csrfCookie) {
+        return next(new AppError("CSRF token validation failed", 403, "CSRF_VALIDATION_FAILED"));
+      }
+    }
+
     return next();
   } catch (error) {
     return next(new AppError("Invalid or expired authentication token", 401, "UNAUTHENTICATED"));

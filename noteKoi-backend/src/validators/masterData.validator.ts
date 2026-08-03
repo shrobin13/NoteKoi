@@ -40,8 +40,21 @@ export const updateCourseSchema = z.object({
   description: z.string().trim().max(1000).optional().nullable(),
 });
 
+export const adoptDepartmentSchema = z.object({
+  departmentId: z.string().min(1),
+});
+
 export const idParamSchema = z.object({
   id: z.string().min(1),
+});
+
+export const collegeIdParamSchema = z.object({
+  collegeId: z.string().min(1),
+});
+
+export const collegeDepartmentParamsSchema = z.object({
+  collegeId: z.string().min(1),
+  departmentId: z.string().min(1),
 });
 
 export const departmentIdParamSchema = z.object({

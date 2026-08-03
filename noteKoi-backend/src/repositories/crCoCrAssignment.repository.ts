@@ -41,6 +41,29 @@ export function createCrCoCrAssignment(data: {
   });
 }
 
+export function findActiveCrCoCrAssignmentByScope(userId: string, departmentId: string, sessionId: string) {
+  return prisma.crCoCrAssignment.findFirst({
+    where: {
+      userId,
+      departmentId,
+      sessionId,
+      isActive: true,
+    },
+  });
+}
+
+export function findActiveCrCoCrAssignmentByScopeAndType(collegeId: string, departmentId: string, sessionId: string, type: $Enums.CrCoCrType) {
+  return prisma.crCoCrAssignment.findFirst({
+    where: {
+      collegeId,
+      departmentId,
+      sessionId,
+      type,
+      isActive: true,
+    },
+  });
+}
+
 export function findCrCoCrAssignmentById(id: string) {
   return prisma.crCoCrAssignment.findUnique({
     where: { id },

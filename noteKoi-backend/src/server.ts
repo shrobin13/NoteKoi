@@ -13,6 +13,10 @@ import { env } from "./config/env.js";
 import healthRoutes from "./routes/health.routes.js";
 import verificationRoutes from "./routes/verification.routes.js";
 import roleRoutes from "./routes/role.routes.js";
+import { requestLogger } from "./middlewares/requestLogger.js";
+import { logger } from "./config/logger.js";
+import resourceRoutes from "./routes/resource.routes.js";
+import moderationRoutes from "./routes/moderation.routes.js";
 
 const app = express();
 
@@ -26,20 +30,23 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(requestLogger);
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/colleges", collegeRoutes);
 app.use("/api/v1/departments", departmentRoutes);
-app.use("/api/v1/departments", sessionRoutes);
-app.use("/api/v1/departments", courseRoutes);
+app.use("/api/v1", sessionRoutes);
+app.use("/api/v1", courseRoutes);
 app.use("/api/v1", verificationRoutes);
 app.use("/api/v1", roleRoutes);
+app.use("/api/v1", resourceRoutes);
+app.use("/api/v1", moderationRoutes);
 app.use("/api/v1", healthRoutes);
 
 app.use(errorHandler);
 
 const port = env.PORT;
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  logger.info({ port }, "Server running");
 });

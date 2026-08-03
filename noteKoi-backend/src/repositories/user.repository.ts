@@ -111,3 +111,10 @@ export function updateTeacherVerificationStatus(userId: string, status: "VERIFIE
     data: { teacherVerificationStatus: status },
   });
 }
+
+export function findTeacherDepartmentIds(teacherId: string) {
+  return prisma.teacherDepartment.findMany({
+    where: { teacherId },
+    select: { departmentId: true },
+  });
+}

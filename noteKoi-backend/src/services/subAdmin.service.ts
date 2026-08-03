@@ -1,7 +1,6 @@
 import { AppError } from "../errors/app.error.js";
-import { findActiveSubAdminAssignmentByCollege } from "../repositories/subAdminAssignment.repository.js";
-import { createSubAdminAssignment, findSubAdminAssignmentById, updateSubAdminAssignmentRevocation } from "../repositories/subAdminAssignment.repository.js";
-import { findUserById, updateUserRole } from "../repositories/user.repository.js";
+import { findActiveSubAdminAssignmentByCollege, findSubAdminAssignmentById, createSubAdminAssignmentWithRoleUpdate, updateSubAdminAssignmentRevocation } from "../repositories/subAdminAssignment.repository.js";
+import { findUserById } from "../repositories/user.repository.js";
 import { $Enums } from "../../generated/prisma/client.js";
 
 export async function appointSubAdmin(actor: { userId: string; collegeId?: string | null }, input: { userId: string; collegeId: string }) {
@@ -19,18 +18,21 @@ export async function appointSubAdmin(actor: { userId: string; collegeId?: strin
     throw new AppError("User not found", 404, "USER_NOT_FOUND");
   }
 
+  if (targetUser.collegeId !== input.collegeId) {
+    throw new AppError("Target user must belong to the selected college", 422, "COLLEGE_MISMATCH");
+  }
+
   const existingAssignment = await findActiveSubAdminAssignmentByCollege(input.collegeId);
   if (existingAssignment) {
     throw new AppError("An active sub admin already exists for this college", 409, "SUB_ADMIN_ALREADY_EXISTS");
   }
 
-  const assignment = await createSubAdminAssignment({
+  const assignment = await createSubAdminAssignmentWithRoleUpdate({
     userId: input.userId,
     collegeId: input.collegeId,
     appointedById: actor.userId,
+    role: $Enums.Role.SUB_ADMIN,
   });
-
-  await updateUserRole(input.userId, $Enums.Role.SUB_ADMIN);
 
   return assignment;
 }
