@@ -1,0 +1,11 @@
+packages:
+  - 'note-koi-frontend'
+  - 'noteKoi-backend'
+
+allowBuilds:
+  sharp: true
+  bcrypt: true
+  esbuild: true
+  prisma: true
+  '@prisma/engines': false
+  unrs-resolver: false
