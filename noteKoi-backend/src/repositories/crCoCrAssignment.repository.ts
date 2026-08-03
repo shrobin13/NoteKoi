@@ -27,6 +27,7 @@ export function createCrCoCrAssignment(data: {
   sessionId: string;
   type: $Enums.CrCoCrType;
   appointedById: string;
+  isEmergencyAppointment?: boolean;
 }) {
   return prisma.crCoCrAssignment.create({
     data: {
@@ -36,6 +37,7 @@ export function createCrCoCrAssignment(data: {
       sessionId: data.sessionId,
       type: data.type,
       appointedById: data.appointedById,
+      isEmergencyAppointment: data.isEmergencyAppointment ?? false,
       isActive: true,
     },
   });

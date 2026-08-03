@@ -79,6 +79,14 @@ export function findPromotionEventsByResource(resourceId: string) {
   });
 }
 
+export function findLatestPromotedEventByResource(resourceId: string) {
+  return prisma.promotionEvent.findFirst({
+    where: { resourceId, action: $Enums.PromotionEventAction.PROMOTED },
+    orderBy: { createdAt: "desc" },
+    include: { recommendation: true },
+  });
+}
+
 export async function createPromotionRecommendationAndEventInTransaction(resourceId: string, recommendedById: string, actorId: string) {
   return prisma.$transaction(async (tx) => {
     const recommendation = await tx.promotionRecommendation.create({

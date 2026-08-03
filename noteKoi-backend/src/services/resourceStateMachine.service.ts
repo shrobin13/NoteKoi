@@ -12,6 +12,8 @@ import {
   resubmitResource,
   updateResourceStateWithModerator,
 } from "../repositories/resource.repository.js";
+import { createNotification } from "../repositories/notification.repository.js";
+import { findLatestPromotedEventByResource } from "../repositories/promotion.repository.js";
 import { $Enums } from "../../generated/prisma/client.js";
 
 export async function openForReview(moderatorId: string, resourceId: string) {
@@ -35,10 +37,32 @@ export async function approve(moderatorId: string, resourceId: string, reason?: 
   // If uploader flagged deletion while in review, an approve acts as deletion approval
   if (resource.deletionFlag) {
     const updated = await updateResourceStateWithModerator(resourceId, { state: $Enums.ResourceState.DELETED, moderatorId, moderatorReason: reason ?? null });
+
+    await createNotification({
+      data: {
+        user: { connect: { id: resource.uploaderId } },
+        resource: { connect: { id: resourceId } },
+        type: $Enums.NotificationType.DELETION_APPROVED,
+        message: `Your resource deletion request was approved.`,
+        reason: reason ?? null,
+      },
+    });
+
     return updated;
   }
 
   const updated = await approveResourceAndSupersede(resourceId, moderatorId, reason);
+
+  await createNotification({
+    data: {
+      user: { connect: { id: resource.uploaderId } },
+      resource: { connect: { id: resourceId } },
+      type: $Enums.NotificationType.RESOURCE_APPROVED,
+      message: `Your resource "${resource.title}" was approved.`,
+      reason: reason ?? null,
+    },
+  });
+
   return updated;
 }
 
@@ -50,6 +74,61 @@ export async function reject(moderatorId: string, resourceId: string, reason: st
   }
 
   const updated = await rejectResource(resourceId, moderatorId, reason);
+
+  // Check if resource had a prior promotion event (was previously promoted to PLATFORM)
+  const priorPromotedEvent = await findLatestPromotedEventByResource(resourceId);
+
+  if (priorPromotedEvent) {
+    // Promoted resource later rejected on re-review
+    if (priorPromotedEvent.path === $Enums.PromotionPath.PATH_A) {
+      // Path A: uploader + CR/Co-CR who recommended + Sub Admin who approved
+      const recipients = new Set<string>();
+      recipients.add(resource.uploaderId);
+      if (priorPromotedEvent.recommendation?.recommendedById) {
+        recipients.add(priorPromotedEvent.recommendation.recommendedById);
+      }
+      if (priorPromotedEvent.actorId) {
+        recipients.add(priorPromotedEvent.actorId);
+      }
+
+      for (const userId of recipients) {
+        await createNotification({
+          data: {
+            user: { connect: { id: userId } },
+            resource: { connect: { id: resourceId } },
+            type: $Enums.NotificationType.PROMOTED_RESOURCE_LATER_REJECTED,
+            message: `Promoted resource "${resource.title}" was rejected upon re-review.`,
+            reason,
+          },
+        });
+      }
+    } else {
+      // Path B: Sub Admin only (not teacher uploader per §3.8 / §0.2 Teacher)
+      if (priorPromotedEvent.actorId) {
+        await createNotification({
+          data: {
+            user: { connect: { id: priorPromotedEvent.actorId } },
+            resource: { connect: { id: resourceId } },
+            type: $Enums.NotificationType.PROMOTED_RESOURCE_LATER_REJECTED,
+            message: `Promoted teacher resource "${resource.title}" was rejected upon re-review.`,
+            reason,
+          },
+        });
+      }
+    }
+  } else {
+    // Normal rejection: notify uploader
+    await createNotification({
+      data: {
+        user: { connect: { id: resource.uploaderId } },
+        resource: { connect: { id: resourceId } },
+        type: $Enums.NotificationType.RESOURCE_REJECTED,
+        message: `Your resource "${resource.title}" was rejected.`,
+        reason,
+      },
+    });
+  }
+
   return updated;
 }
 
@@ -91,6 +170,19 @@ export async function requestDeletion(uploaderId: string, resourceId: string) {
 
 export async function deletionDecision(requestId: string, decidedById: string, approve: boolean, reason?: string) {
   const dr = await decideDeletionRequest(requestId, decidedById, approve, reason ?? undefined);
+
+  if (dr) {
+    await createNotification({
+      data: {
+        user: { connect: { id: dr.requestedById } },
+        resource: { connect: { id: dr.resourceId } },
+        type: approve ? $Enums.NotificationType.DELETION_APPROVED : $Enums.NotificationType.DELETION_DENIED,
+        message: approve ? `Your deletion request was approved.` : `Your deletion request was denied.`,
+        reason: reason ?? null,
+      },
+    });
+  }
+
   return dr;
 }
 

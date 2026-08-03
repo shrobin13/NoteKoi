@@ -41,7 +41,13 @@ const sidebarGroups: Record<UserRole, SidebarGroup[]> = {
         { href: "/profile", label: "Profile" }
       ]
     },
-    { title: "Actions", items: [{ href: "/upload", label: "Upload" }] }
+    {
+      title: "Actions",
+      items: [
+        { href: "/upload", label: "Upload" },
+        { href: "/my-uploads", label: "My Uploads" }
+      ]
+    }
   ],
   TEACHER: [
     {
@@ -53,7 +59,13 @@ const sidebarGroups: Record<UserRole, SidebarGroup[]> = {
         { href: "/profile", label: "Profile" }
       ]
     },
-    { title: "Actions", items: [{ href: "/upload", label: "Upload" }] }
+    {
+      title: "Actions",
+      items: [
+        { href: "/upload", label: "Upload" },
+        { href: "/my-uploads", label: "My Uploads" }
+      ]
+    }
   ],
   CR: [
     {
@@ -65,7 +77,20 @@ const sidebarGroups: Record<UserRole, SidebarGroup[]> = {
         { href: "/profile", label: "Profile" }
       ]
     },
-    { title: "Moderation", items: [{ href: "/moderate/cr", label: "Moderate" }] }
+    {
+      title: "Actions",
+      items: [
+        { href: "/upload", label: "Upload" },
+        { href: "/my-uploads", label: "My Uploads" }
+      ]
+    },
+    {
+      title: "Moderation",
+      items: [
+        { href: "/moderate/cr", label: "Review Queue" },
+        { href: "/moderate/cr/student-verifications", label: "Verify Students" }
+      ]
+    }
   ],
   CO_CR: [
     {
@@ -77,7 +102,20 @@ const sidebarGroups: Record<UserRole, SidebarGroup[]> = {
         { href: "/profile", label: "Profile" }
       ]
     },
-    { title: "Moderation", items: [{ href: "/moderate/cr", label: "Moderate" }] }
+    {
+      title: "Actions",
+      items: [
+        { href: "/upload", label: "Upload" },
+        { href: "/my-uploads", label: "My Uploads" }
+      ]
+    },
+    {
+      title: "Moderation",
+      items: [
+        { href: "/moderate/cr", label: "Review Queue" },
+        { href: "/moderate/cr/student-verifications", label: "Verify Students" }
+      ]
+    }
   ],
   SUB_ADMIN: [
     {
@@ -89,8 +127,15 @@ const sidebarGroups: Record<UserRole, SidebarGroup[]> = {
         { href: "/profile", label: "Profile" }
       ]
     },
-    { title: "Manage", items: [{ href: "/manage/sub-admin/queue", label: "Moderation" }] },
-    { title: "Admin", items: [{ href: "/manage/sub-admin/analytics", label: "Analytics" }] }
+    {
+      title: "Manage",
+      items: [
+        { href: "/manage/sub-admin/queue", label: "Moderation Queue" },
+        { href: "/manage/sub-admin/teacher-verifications", label: "Verify Teachers" },
+        { href: "/manage/sub-admin/cr-assignments", label: "CR Assignments" },
+        { href: "/manage/sub-admin/analytics", label: "Analytics" }
+      ]
+    }
   ],
   PLATFORM_ADMIN: [
     {
@@ -102,8 +147,17 @@ const sidebarGroups: Record<UserRole, SidebarGroup[]> = {
         { href: "/profile", label: "Profile" }
       ]
     },
-    { title: "Manage", items: [{ href: "/manage/sub-admin/queue", label: "Moderation" }] },
-    { title: "Admin", items: [{ href: "/admin/structure", label: "Structure" }, { href: "/admin/analytics", label: "Analytics" }] }
+    {
+      title: "Admin",
+      items: [
+        { href: "/admin/structure", label: "Colleges & Departments" },
+        { href: "/admin/sub-admins", label: "Sub Admins" },
+        { href: "/admin/analytics", label: "Analytics & Logs" },
+        { href: "/admin/override", label: "Resource Override" },
+        { href: "/admin/promotion-override", label: "Promotion Override" },
+        { href: "/admin/emergency-appointment", label: "Emergency Appointment" }
+      ]
+    }
   ]
 };
 

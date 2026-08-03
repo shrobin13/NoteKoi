@@ -36,8 +36,9 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
     [pathname]
   );
 
+
   const unreadCount = useMemo(
-    () => notifications?.filter((notification) => !notification.read).length ?? 0,
+    () => notifications?.filter((notification) => !notification.isRead).length ?? 0,
     [notifications]
   );
 

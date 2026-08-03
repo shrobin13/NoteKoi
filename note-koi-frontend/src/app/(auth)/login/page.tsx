@@ -78,7 +78,7 @@ export default function LoginPage() {
               {errors.password && <p className="text-xs text-rose-400">{errors.password.message}</p>}
             </div>
             {formError ? <p className="text-sm text-rose-400">{formError}</p> : null}
-            <Button type="submit" className="w-full" disabled={mutation.isPending}>
+            <Button type="button" onClick={handleSubmit(onSubmit)} className="w-full" disabled={mutation.isPending}>
               {mutation.isPending ? "Signing in..." : "Sign In"}
             </Button>
           </form>

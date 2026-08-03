@@ -20,7 +20,13 @@ const categories: ResourceType[] = [
 export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const { data } = useResourcesQuery({ q: query, resourceType: selectedCategory ?? undefined, limit: 20 });
+  const [includeOtherColleges, setIncludeOtherColleges] = useState(false);
+  const { data } = useResourcesQuery({
+    q: query,
+    resourceType: selectedCategory ?? undefined,
+    includeOtherColleges,
+    limit: 20,
+  });
 
   const filteredResources = useMemo(
     () => {
@@ -80,6 +86,27 @@ export default function SearchPage() {
                 );
               })}
             </div>
+
+            <div className="mt-4 border-t border-slate-800/80 pt-4">
+              <button
+                type="button"
+                onClick={() => setIncludeOtherColleges((prev) => !prev)}
+                className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium transition ${
+                  includeOtherColleges
+                    ? "border-indigo-500 bg-indigo-950/40 text-indigo-300"
+                    : "border-slate-700 bg-slate-950/60 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                }`}
+              >
+                <span
+                  className={`h-3.5 w-3.5 rounded-full border transition ${
+                    includeOtherColleges
+                      ? "border-indigo-500 bg-indigo-500"
+                      : "border-slate-600 bg-transparent"
+                  }`}
+                />
+                Include other colleges
+              </button>
+            </div>
           </div>
 
           <div className="rounded-3xl border border-slate-800/80 bg-slate-900/80 p-6 text-sm text-slate-300">
@@ -89,6 +116,9 @@ export default function SearchPage() {
             </p>
             {selectedCategory ? (
               <p className="mt-3 text-slate-400">Filtered by type: {selectedCategory.replace("_", " ")}</p>
+            ) : null}
+            {includeOtherColleges ? (
+              <p className="mt-1 text-slate-400">Showing results from all colleges.</p>
             ) : null}
           </div>
         </div>

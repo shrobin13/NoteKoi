@@ -5,6 +5,16 @@ import { EmptyStateBlock } from "@/components/shared/empty-state-block";
 import { useNotificationsQuery } from "@/hooks/useNotificationsQuery";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 
+const NOTIFICATION_LABELS: Record<string, string> = {
+  RESOURCE_APPROVED: "Resource Approved",
+  RESOURCE_REJECTED: "Resource Rejected",
+  PROMOTION_RECOMMENDATION_APPROVED: "Promotion Approved",
+  PROMOTION_RECOMMENDATION_DENIED: "Promotion Denied",
+  DELETION_APPROVED: "Deletion Approved",
+  DELETION_DENIED: "Deletion Denied",
+  PROMOTED_RESOURCE_LATER_REJECTED: "Promoted Resource Rejected",
+};
+
 export default function NotificationsPage() {
   const { isLoading: isLoadingUser } = useRequireAuth();
   const { data: notifications, isLoading } = useNotificationsQuery(1, 20);
@@ -62,16 +72,19 @@ export default function NotificationsPage() {
         {notifications.map((notification) => (
           <Card key={notification.id} className="border-slate-700/80 bg-slate-900/80 p-6">
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-white">{notification.title}</p>
-                {notification.body ? (
-                  <p className="mt-2 text-sm leading-6 text-slate-300">{notification.body}</p>
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.18em] text-indigo-400">
+                  {NOTIFICATION_LABELS[notification.type] ?? notification.type}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">{notification.message}</p>
+                {notification.reason ? (
+                  <p className="mt-2 text-sm leading-6 text-slate-300">Reason: {notification.reason}</p>
                 ) : null}
               </div>
               <span className={
-                `rounded-full px-3 py-1 text-[0.65rem] uppercase tracking-[0.18em] ${notification.read ? "bg-slate-800 text-slate-400" : "bg-emerald-500 text-slate-950"}`
+                `shrink-0 rounded-full px-3 py-1 text-[0.65rem] uppercase tracking-[0.18em] ${notification.isRead ? "bg-slate-800 text-slate-400" : "bg-emerald-500 text-slate-950"}`
               }>
-                {notification.read ? "Read" : "New"}
+                {notification.isRead ? "Read" : "New"}
               </span>
             </div>
             <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-500">{new Date(notification.createdAt).toLocaleString()}</p>

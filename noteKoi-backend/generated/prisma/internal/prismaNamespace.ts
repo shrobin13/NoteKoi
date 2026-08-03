@@ -1712,6 +1712,7 @@ export type CourseScalarFieldEnum = (typeof CourseScalarFieldEnum)[keyof typeof 
 export const UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
+  name: 'name',
   passwordHash: 'passwordHash',
   role: 'role',
   createdAt: 'createdAt',

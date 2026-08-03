@@ -24,6 +24,8 @@ import promotionRoutes from "./routes/promotion.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import adminOverrideRoutes from "./routes/adminOverride.routes.js";
 
+import path from "path";
+
 const app = express();
 
 app.use(helmet());
@@ -37,6 +39,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(requestLogger);
+
+// Serve static uploaded files
+app.use("/storage", express.static(path.resolve(process.cwd(), "storage")));
+app.use("/uploads", express.static(path.resolve(process.cwd(), "storage", "uploads")));
 
 app.use("/api/v1/auth", authRoutes);
 // enforce CSRF on all subsequent state-changing routes

@@ -4,12 +4,14 @@ import { findCollegeById } from "../repositories/college.repository.js";
 import { findCollegeDepartment } from "../repositories/collegeDepartment.repository.js";
 import { findDepartmentById } from "../repositories/department.repository.js";
 import { findSessionById } from "../repositories/session.repository.js";
-import { createUser, createTeacherUserWithDepartments, findUserByCollegeAndRegNo, findUserByEmail, findUserById } from "../repositories/user.repository.js";
+import { createUser, createTeacherUserWithDepartments, findUserByCollegeAndRegNo, findUserByEmail, findUserById, updateUserProfileData } from "../repositories/user.repository.js";
+import { findActiveCrCoCrAssignmentsForUser } from "../repositories/crCoCrAssignment.repository.js";
 import { $Enums } from "../../generated/prisma/client.js";
 
 function buildUserDto(user: {
   id: string;
   email: string;
+  name?: string | null;
   role: string;
   collegeId?: string | null;
   departmentId?: string | null;
@@ -22,6 +24,7 @@ function buildUserDto(user: {
   return {
     id: user.id,
     email: user.email,
+    name: user.name ?? null,
     role: user.role,
     collegeId: user.collegeId,
     departmentId: user.departmentId,
@@ -42,8 +45,29 @@ export async function getCurrentUserProfile(userId: string) {
   return buildUserDto(user);
 }
 
+export async function updateUserProfile(userId: string, input: { name?: string | null }) {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404, "USER_NOT_FOUND");
+  }
+
+  const updated = await updateUserProfileData(userId, { name: input.name ?? null });
+  return buildUserDto(updated);
+}
+
+export async function getCurrentUserAssignments(userId: string) {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404, "USER_NOT_FOUND");
+  }
+
+  const assignments = await findActiveCrCoCrAssignmentsForUser(userId);
+  return assignments;
+}
+
 export async function registerStudent(input: {
   email: string;
+  name?: string;
   password: string;
   collegeId: string;
   departmentId: string;
@@ -83,6 +107,7 @@ export async function registerStudent(input: {
   const passwordHash = await hashPassword(input.password);
   const user = await createUser({
     email: input.email,
+    name: input.name ?? null,
     passwordHash,
     role: $Enums.Role.STUDENT,
     college: {
@@ -103,6 +128,7 @@ export async function registerStudent(input: {
 
 export async function registerTeacher(input: {
   email: string;
+  name?: string;
   password: string;
   collegeId: string;
   departmentIds: string[];
@@ -138,6 +164,7 @@ export async function registerTeacher(input: {
   const user = await createTeacherUserWithDepartments(
     {
       email: input.email,
+      name: input.name ?? null,
       passwordHash,
       role: $Enums.Role.TEACHER,
       college: {

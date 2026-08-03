@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useUploadResourceMutation } from "@/hooks/useUploadResourceMutation";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useDepartmentsQuery } from "@/hooks/useDepartmentsQuery";
+import { useCoursesQuery } from "@/hooks/useCoursesQuery";
+import { useSessionsQuery } from "@/hooks/useSessionsQuery";
 import { ResourceType, UploaderRoleSnapshot, User, Visibility } from "@/lib/types";
 
 export default function UploadPage() {
@@ -110,6 +113,10 @@ function UploadWizard({ user, versionOfId }: { user: User; versionOfId: string |
   const sessionId = watch("sessionId");
   const title = watch("title");
   const youtubeUrl = watch("youtubeUrl");
+
+  const { data: allDepartments } = useDepartmentsQuery();
+  const { data: courses } = useCoursesQuery(departmentId || undefined);
+  const { data: sessions } = useSessionsQuery(departmentId || undefined);
 
   // Step 3 Validation: PYQ missing session/year blocks Next button (Milestone 4 task 1 Step 3)
   const isPYQMissingSession = resourceType === "PYQ" && !sessionId?.trim();
@@ -301,37 +308,66 @@ function UploadWizard({ user, versionOfId }: { user: User; versionOfId: string |
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block space-y-2 text-sm">
-                  <span className="font-medium text-slate-200">Course ID *</span>
-                  <input
+                  <span className="font-medium text-slate-200">Department *</span>
+                  <select
                     className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500"
-                    {...register("courseId")}
-                    placeholder="e.g. course_123"
-                  />
+                    {...register("departmentId")}
+                    onChange={(e) => {
+                      setValue("departmentId", e.target.value);
+                      setValue("courseId", "");
+                      setValue("sessionId", "");
+                    }}
+                  >
+                    <option value="">Select department…</option>
+                    {(allDepartments ?? []).map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
                 <label className="block space-y-2 text-sm">
-                  <span className="font-medium text-slate-200">Department ID *</span>
-                  <input
-                    className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500"
-                    {...register("departmentId")}
-                    placeholder="e.g. dept_cse"
-                  />
+                  <span className="font-medium text-slate-200">Course *</span>
+                  <select
+                    className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500 disabled:opacity-50"
+                    {...register("courseId")}
+                    disabled={!departmentId || !courses}
+                  >
+                    <option value="">
+                      {!departmentId ? "Select department first" : "Select course…"}
+                    </option>
+                    {(courses ?? []).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
 
               <label className="block space-y-2 text-sm">
                 <span className="font-medium text-slate-200">
-                  Session ID {resourceType === "PYQ" ? "*" : "(Optional)"}
+                  Session {resourceType === "PYQ" ? "*" : "(Optional)"}
                 </span>
-                <input
-                  className={`w-full rounded-2xl border bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500 ${
+                <select
+                  className={`w-full rounded-2xl border bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500 disabled:opacity-50 ${
                     isPYQMissingSession ? "border-rose-500" : "border-slate-700"
                   }`}
                   {...register("sessionId")}
-                  placeholder="e.g. 2024-2025"
-                />
+                  disabled={!departmentId || !sessions}
+                >
+                  <option value="">
+                    {!departmentId ? "Select department first" : "Select session…"}
+                  </option>
+                  {(sessions ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
                 {isPYQMissingSession && (
-                  <p className="text-xs text-rose-400 font-semibold">
+                  <p className="text-xs font-semibold text-rose-400">
                     Validation error: PYQ resources require a Session/Year. Next button is blocked.
                   </p>
                 )}

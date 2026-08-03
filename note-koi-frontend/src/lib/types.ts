@@ -83,12 +83,23 @@ export interface Resource {
   createdAt: string;
 }
 
+// Notification fields match backend model: type, message, reason, isRead
+export type NotificationType =
+  | "RESOURCE_APPROVED"
+  | "RESOURCE_REJECTED"
+  | "PROMOTION_RECOMMENDATION_APPROVED"
+  | "PROMOTION_RECOMMENDATION_DENIED"
+  | "DELETION_APPROVED"
+  | "DELETION_DENIED"
+  | "PROMOTED_RESOURCE_LATER_REJECTED";
+
 export interface Notification {
   id: string;
   userId: string;
-  title: string;
-  body?: string | null;
-  read: boolean;
+  resourceId?: string | null;
+  type: NotificationType;
+  message: string;
+  reason?: string | null;
+  isRead: boolean;
   createdAt: string;
-  meta?: Record<string, unknown> | null;
 }

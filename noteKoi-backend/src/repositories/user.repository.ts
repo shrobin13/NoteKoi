@@ -47,6 +47,13 @@ export function updateUserPassword(userId: string, passwordHash: string) {
   });
 }
 
+export function updateUserProfileData(userId: string, data: { name?: string | null }) {
+  return prisma.user.update({
+    where: { id: userId },
+    data,
+  });
+}
+
 export function findUserByCollegeAndRegNo(collegeId: string, regNo: string) {
   return prisma.user.findFirst({
     where: {

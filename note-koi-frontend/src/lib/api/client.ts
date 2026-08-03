@@ -4,11 +4,27 @@ export interface ApiError extends Error {
   body?: unknown;
 }
 
+function getCsrfToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export async function request<T = unknown>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const isMutating = !["GET", "HEAD", "OPTIONS"].includes(method);
+
+  const csrfHeaders: Record<string, string> = {};
+  if (isMutating) {
+    const token = getCsrfToken();
+    if (token) csrfHeaders["x-csrf-token"] = token;
+  }
+
   const res = await fetch(String(input), {
     credentials: "include",
     headers: {
       Accept: "application/json",
+      ...csrfHeaders,
       ...(init?.headers as Record<string, string> | undefined),
     },
     ...init,
@@ -28,7 +44,10 @@ export async function request<T = unknown>(input: RequestInfo, init?: RequestIni
   }
 
   if (!res.ok) {
-    const errObj = typeof body === "object" && body !== null && "error" in body ? (body as { error?: { message?: string } }).error : undefined;
+    const errObj =
+      typeof body === "object" && body !== null && "error" in body
+        ? (body as { error?: { message?: string } }).error
+        : undefined;
     const message = errObj?.message || res.statusText || "API error";
     const err = new Error(message) as ApiError;
     err.status = res.status;
@@ -37,7 +56,11 @@ export async function request<T = unknown>(input: RequestInfo, init?: RequestIni
   }
 
   if (typeof body === "object" && body !== null && "success" in body) {
-    const envelope = body as { success: boolean; data?: unknown; error?: { message?: string; code?: string } };
+    const envelope = body as {
+      success: boolean;
+      data?: unknown;
+      error?: { message?: string; code?: string };
+    };
     if (envelope.success === false) {
       const err = new Error(envelope.error?.message || "API error") as ApiError;
       err.code = envelope.error?.code;

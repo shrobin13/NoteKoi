@@ -6,10 +6,19 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useLogoutMutation } from "@/hooks/useLogoutMutation";
+import { useQuery } from "@tanstack/react-query";
+import { getColleges } from "@/lib/api/colleges";
+import { getDepartments } from "@/lib/api/departments";
 
 export default function ProfilePage() {
   const { user, isLoading, error } = useRequireAuth();
   const logoutMutation = useLogoutMutation();
+
+  const { data: colleges } = useQuery({ queryKey: ["colleges"], queryFn: getColleges, staleTime: 1000 * 60 * 10 });
+  const { data: departments } = useQuery({ queryKey: ["departments"], queryFn: getDepartments, staleTime: 1000 * 60 * 10 });
+
+  const collegeName = colleges?.find((c) => c.id === user?.collegeId)?.name;
+  const departmentName = departments?.find((d) => d.id === user?.departmentId)?.name;
 
   if (isLoading) {
     return (
@@ -68,15 +77,15 @@ export default function ProfilePage() {
           <div className="grid gap-3 rounded-3xl bg-slate-950/70 p-4 text-sm text-slate-300">
             <div className="flex items-center justify-between">
               <span>Role</span>
-              <span className="font-semibold text-white">{user.role}</span>
+              <span className="font-semibold text-white">{user.role.replace(/_/g, " ")}</span>
             </div>
             <div className="flex items-center justify-between">
               <span>College</span>
-              <span className="font-semibold text-white">{user.collegeId ?? "Not set"}</span>
+              <span className="font-semibold text-white">{collegeName ?? user.collegeId ?? "Not set"}</span>
             </div>
             <div className="flex items-center justify-between">
               <span>Department</span>
-              <span className="font-semibold text-white">{user.departmentId ?? "Not set"}</span>
+              <span className="font-semibold text-white">{departmentName ?? user.departmentId ?? "Not set"}</span>
             </div>
           </div>
 

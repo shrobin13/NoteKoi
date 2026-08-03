@@ -2,36 +2,50 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/providers/theme-provider";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useUsersQuery } from "@/hooks/useUsersQuery";
 import { useUserStore } from "@/store/use-user-store";
+import { useQuery } from "@tanstack/react-query";
+import { getUserAssignments } from "@/lib/api/users";
 
 const queryClient = new QueryClient();
 
 function AppProvidersInner({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const { data, error } = useUsersQuery();
   const setRole = useUserStore((s) => s.setRole);
   const setVerified = useUserStore((s) => s.setVerified);
 
+  const { data: assignments } = useQuery({
+    queryKey: ["users", "me", "assignments"],
+    queryFn: getUserAssignments,
+    enabled: data?.role === "STUDENT",
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
   useEffect(() => {
     if (data) {
       setVerified(Boolean(data.isVerified));
-      setRole(data.role || "GUEST");
+      const activeCr = assignments?.find((a) => a.isActive && a.type === "CR");
+      const activeCoCr = assignments?.find((a) => a.isActive && a.type === "CO_CR");
+      if (activeCr) {
+        setRole("CR");
+      } else if (activeCoCr) {
+        setRole("CO_CR");
+      } else {
+        setRole(data.role || "GUEST");
+      }
     }
-  }, [data, setRole, setVerified]);
+  }, [data, assignments, setRole, setVerified]);
 
   useEffect(() => {
     if (error && typeof error === "object" && error !== null && "status" in error) {
-      const status = (error as { status?: number }).status;
-      if (status === 401) {
+      if ((error as { status?: number }).status === 401) {
         setVerified(false);
         setRole("GUEST");
-        router.push("/login");
       }
     }
-  }, [error, router, setRole, setVerified]);
+  }, [error, setRole, setVerified]);
 
   return <>{children}</>;
 }
