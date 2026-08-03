@@ -1,5 +1,5 @@
 // ============================================================================
-// College Resource & Academic Collaboration Platform — v3.0
+// College Resource & Academic Collaboration Platform — v6.0
 // Prisma schema — PostgreSQL (Neon)
 //
 // DBA / senior-engineer notes are inlined as comments next to the decisions
@@ -8,551 +8,588 @@
 
 generator client {
   provider = "prisma-client"
-  output = "../generated/prisma"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// ============================================================================
-// ENUMS
-// ============================================================================
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
 
+// Base account roles (§0.1, §0.2). "CR/Co-CR" and "Guest" are NOT base roles:
+// - Guest is unauthenticated, so it has no User row at all.
+// - CR/Co-CR is an elevation layered on top of a STUDENT account, tracked in
+//   CrCoCrAssignment (§1.4), not a separate value here.
 enum Role {
+  PLATFORM_ADMIN
+  SUB_ADMIN
   STUDENT
-  CR
-  SUB_ADMIN
-  OWNER_ADMIN
+  TEACHER
 }
 
-enum VerificationStatus {
-  PENDING
+// §5.8 — Teacher accounts cannot upload until Sub Admin approves them.
+enum TeacherVerificationStatus {
+  PENDING_VERIFICATION
   VERIFIED
-  REJECTED
 }
 
+// §0.2 — CR and Co-CR hold identical permissions; the distinction is
+// organisational only.
+enum CrCoCrType {
+  CR
+  CO_CR
+}
+
+// §2.3
+enum ResourceType {
+  CLASS_NOTES
+  LECTURE_NOTES
+  SYLLABUS
+  VIDEO
+  PYQ
+  BOOK_PDF
+}
+
+// §0.3 — visibility governs *viewing*, not moderation authority.
 enum Visibility {
-  PUBLIC
-  PRIVATE
+  COLLEGE
+  PLATFORM
 }
 
-enum CrSeat {
-  MAIN
-  CO
+// §5.1 — the ONLY seven real workflow states. "In Review (Deletion Flagged)"
+// and "Deletion Denied" are display labels / logged outcomes, not states —
+// they are modeled via `deletionFlag` and the DeletionRequest log below,
+// never as extra enum values.
+enum ResourceState {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  SUPERSEDED
+  DELETION_REQUESTED
+  DELETED
 }
 
-// Kept separate from CrSeat/Role so AdminAssignment stays generic even if
-// a future release allows multiple Sub Admins per college (see Section 3.2).
-enum AdminRole {
-  SUB_ADMIN
-  OWNER_ADMIN
+// §5.4 — how a resource reached PLATFORM visibility.
+enum PromotionPath {
+  PATH_A // Student-originated, CR/Co-CR recommendation required
+  PATH_B // Teacher-originated, Sub Admin promotes directly
 }
 
-enum AuditAction {
-  PROMOTE
-  DEMOTE
-  OWNERSHIP_TRANSFER
-  VERIFY
+enum PromotionRecommendationStatus {
+  PENDING
+  APPROVED
+  DENIED
+  INVALIDATED // §5.4 invalidation rule: report / structural edit / deletion request
 }
 
-// ============================================================================
-// IDENTITY & HIERARCHY
-// ============================================================================
-
-model User {
-  id                 String             @id @default(cuid())
-  email              String             @unique
-  passwordHash       String
-  name               String
-  role               Role               @default(STUDENT)
-  verificationStatus VerificationStatus @default(PENDING)
-
-  // Mandatory college binding (Section 4). Required for every account,
-  // including Sub Admin / Owner Admin, so scope checks can always join
-  // through a single column regardless of role.
-  collegeId String
-  college   College @relation(fields: [collegeId], references: [id], onDelete: Restrict)
-
-  // Nullable because Owner Admin / Sub Admin are not tied to one classroom
-  // unit. Student and CR rows will always have this set at the application
-  // layer (enforce in service code — see IMPORTANT note on ClassroomUnit).
-  classroomUnitId String?
-  classroomUnit   ClassroomUnit? @relation(fields: [classroomUnitId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations (reverse sides)
-  adminAssignments             AdminAssignment[]      @relation("AdminAssignmentUser")
-  adminAssignmentsGranted      AdminAssignment[]      @relation("AdminAssignmentGrantedBy")
-  crAssignments                CRAssignment[]         @relation("CRAssignmentUser")
-  crAssignmentsGranted         CRAssignment[]         @relation("CRAssignmentGrantedBy")
-  verificationRequestsMade     VerificationRequest[]  @relation("VerificationRequester")
-  verificationRequestsResolved VerificationRequest[]  @relation("VerificationResolver")
-  uploadedResources            Resource[]
-  authoredNotices              Notice[]
-  createdDiscussionGroups      DiscussionGroup[]
-  discussionMemberships        DiscussionMembership[] @relation("MembershipUser")
-  discussionMembersAdded       DiscussionMembership[] @relation("MembershipAddedBy")
-  sentMessages                 Message[]
-  authoredShares               PersonalShare[]
-  receivedShares               ShareRecipient[]
-  auditLogsAsActor             AuditLog[]             @relation("AuditActor")
-  auditLogsAsTarget            AuditLog[]             @relation("AuditTarget")
-
-  @@index([collegeId])
-  @@index([classroomUnitId])
-  @@index([role])
+enum PromotionEventAction {
+  PROMOTED
+  REVOKED // Sub Admin revoking PLATFORM visibility back to COLLEGE
 }
 
+// §5.5
+enum ReportReason {
+  INCORRECT
+  SPAM
+  PLAGIARISED
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+}
+
+// §3.7, §3.9 — a durable log of deletion requests/decisions. "Deletion
+// Denied" (§3.9) is the DENIED status here, surfaced on the resource without
+// ever being a ResourceState.
+enum DeletionRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+// §3.8 — every notification event the spec defines, including the Path A /
+// Path B split for promotion notifications.
+enum NotificationType {
+  RESOURCE_APPROVED
+  RESOURCE_REJECTED
+  PROMOTION_RECOMMENDATION_APPROVED // Path A only
+  PROMOTION_RECOMMENDATION_DENIED // Path A only
+  DELETION_APPROVED
+  DELETION_DENIED
+  PROMOTED_RESOURCE_LATER_REJECTED // Path A: uploader + CR/Co-CR + Sub Admin
+  // Path B: Sub Admin only (§3.8, §0.2 Teacher)
+}
+
+// §5.9, §5.4a, §1.4/§1.5 — Platform Admin's three flavors of exceptional,
+// always-logged, never-routine authority.
+enum OverrideType {
+  RESOURCE_CRUD // §5.9
+  PROMOTION_DECISION // §5.4a
+  ROLE_APPOINTMENT // §0.2 / §1.4 / §1.5 emergency appointment
+}
+
+// ----------------------------------------------------------------------------
+// Org structure: College / Department / Session / Course
+// ----------------------------------------------------------------------------
+
+// §0.1, §7.1 — exactly one College row per college; Platform Admin manages
+// the set of colleges.
 model College {
-  id   String @id @default(cuid())
-  name String @unique
-
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users            User[]
-  departments      Department[]
-  adminAssignments AdminAssignment[]
+  users               User[]
+  subAdminAssignments SubAdminAssignment[]
+  crCoCrAssignments   CrCoCrAssignment[]
+  collegeDepartments  CollegeDepartment[] // §8 "Irrelevant departments hidden" — adoption
+  resources           Resource[]
 
-  @@index([name])
+  @@map("colleges")
 }
 
+// §2.1, §7.1 — Department is platform-level (not per-college). Colleges
+// "adopt" departments via CollegeDepartment.
 model Department {
-  id   String @id @default(cuid())
-  name String
-
-  collegeId String
-  college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-
+  id        String   @id @default(cuid())
+  name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  semesters      Semester[]
-  classroomUnits ClassroomUnit[]
+  sessions           Session[]
+  courses            Course[]
+  collegeDepartments CollegeDepartment[]
+  teacherAssignments TeacherDepartment[]
+  crCoCrAssignments  CrCoCrAssignment[]
 
-  // A department name should be unique within its college, not globally.
-  @@unique([collegeId, name])
-  @@index([collegeId])
+  students  User[]     @relation("StudentDepartment")
+  resources Resource[] @relation("ResourceDepartment")
+
+  @@map("departments")
 }
 
-model Semester {
-  id   String @id @default(cuid())
-  name String // e.g. "Fall 2026", or a semester number
-
+// §2.1 — "Students see only departments their college has adopted."
+model CollegeDepartment {
+  id           String   @id @default(cuid())
+  collegeId    String
   departmentId String
-  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  adoptedAt    DateTime @default(now())
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  college    College    @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
-  courses Course[]
-
-  @@unique([departmentId, name])
-  @@index([departmentId])
+  @@unique([collegeId, departmentId])
+  @@map("college_departments")
 }
 
-model Course {
-  id   String @id @default(cuid())
-  name String
-
-  semesterId String
-  semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  sessions         Session[]
-  resources        Resource[]
-  discussionGroups DiscussionGroup[]
-
-  @@unique([semesterId, name])
-  @@index([semesterId])
-}
-
+// §2.1, §7.4 — Session is platform-level, carries a department_id FK, and
+// different departments may run different academic calendars.
 model Session {
-  id   String @id @default(cuid())
-  name String // e.g. academic session/year label
-
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  classroomUnits ClassroomUnit[]
-
-  @@unique([courseId, name])
-  @@index([courseId])
-}
-
-// IMPORTANT: PRD Section 5 defines a ClassroomUnit as one Department + one
-// Session pair. This is the scope boundary for CR assignment, verification,
-// notices, discussion groups, and personal shares — nearly every guard in
-// the app joins through this table. Keep it a first-class model (not a
-// computed pair) so every dependent table has a single FK to hang off.
-model ClassroomUnit {
-  id String @id @default(cuid())
-
+  id           String   @id @default(cuid())
   departmentId String
-  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  label        String // e.g. "2022-23"
+  isOpen       Boolean  @default(true)
+  createdAt    DateTime @default(now())
 
-  sessionId String
-  session   Session @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  students          User[]             @relation("StudentSession")
+  crCoCrAssignments CrCoCrAssignment[]
+  resources         Resource[]         @relation("ResourceSession") // PYQ session/year (§3.3)
 
-  users                User[]
-  crAssignments        CRAssignment[]
-  verificationRequests VerificationRequest[]
-  resources            Resource[]
-  notices              Notice[]
-  discussionGroups     DiscussionGroup[]
-  personalShares       PersonalShare[]
-
-  // One ClassroomUnit per (department, session) pair — enforced at the DB
-  // level so two rows can never silently represent the same real unit.
-  @@unique([departmentId, sessionId])
-  @@index([departmentId])
-  @@index([sessionId])
+  @@unique([departmentId, label])
+  @@map("sessions")
 }
 
-// ============================================================================
-// GOVERNANCE / ASSIGNMENTS
-// ============================================================================
+// §2.1, §7.4 — Course is platform-level; identical course listing across
+// every college. Renaming never breaks historical resource references
+// (course_id is stable — §7.4 course mutability rule).
+model Course {
+  id           String   @id @default(cuid())
+  departmentId String
+  name         String
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-// Links a User to a College as Sub Admin, or marks the platform's single
-// Owner Admin (collegeId is null in that case). Assigned/revoked by the
-// Owner Admin (Section 3.1/3.2).
-//
-// IMPORTANT — invariants NOT expressible as plain column constraints,
-// enforce these in a DB transaction at the service layer:
-//   1. At most one ACTIVE row with role = OWNER_ADMIN across the whole table.
-//   2. At most one ACTIVE row with role = SUB_ADMIN per collegeId.
-// A partial unique index (Postgres) backstops #2 — see migration note below.
-model AdminAssignment {
-  id String @id @default(cuid())
+  department Department @relation(fields: [departmentId], references: [id])
+  resources  Resource[]
 
-  userId String
-  user   User   @relation("AdminAssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+  @@map("courses")
+}
 
-  role AdminRole
+// ----------------------------------------------------------------------------
+// Users & role assignments
+// ----------------------------------------------------------------------------
 
-  // Null only for OWNER_ADMIN rows (platform-wide, not college-scoped).
+// §0.2 — one row per account. Role-specific fields are nullable and only
+// meaningful for the relevant Role.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Student / Teacher / Sub Admin belong to exactly one college (§0.2).
+  // Platform Admin has no college (collegeId null).
   collegeId String?
-  college   College? @relation(fields: [collegeId], references: [id], onDelete: Restrict)
+  college   College? @relation(fields: [collegeId], references: [id])
 
-  isActive Boolean @default(true)
+  // --- Student-only fields (§1.2) ---
+  regNo        String? // unique within college only — see @@unique below
+  departmentId String? // student's single department
+  sessionId    String? // student's single session
+  department   Department? @relation("StudentDepartment", fields: [departmentId], references: [id])
+  session      Session?    @relation("StudentSession", fields: [sessionId], references: [id])
+  isVerified   Boolean     @default(false) // email / student-ID verification (§1.2)
 
-  assignedById String
-  assignedBy   User   @relation("AdminAssignmentGrantedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+  // --- Teacher-only fields (§1.3, §5.8) ---
+  teacherVerificationStatus TeacherVerificationStatus?
+  teacherDepartments        TeacherDepartment[] // one or more departments taught
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  revokedAt DateTime?
+  // --- relations as actor in various workflows ---
+  uploadedResources  Resource[] @relation("UploaderResources")
+  moderatedResources Resource[] @relation("ModeratedResources")
 
-  @@index([userId])
-  @@index([collegeId, role, isActive])
-  @@index([role, isActive])
+  crCoCrAssignments      CrCoCrAssignment[] @relation("CrCoCrUser")
+  crCoCrAppointmentsMade CrCoCrAssignment[] @relation("CrCoCrAppointedBy")
+  crCoCrRevocationsMade  CrCoCrAssignment[] @relation("CrCoCrRevokedBy")
+
+  subAdminAssignments      SubAdminAssignment[] @relation("SubAdminUser")
+  subAdminAppointmentsMade SubAdminAssignment[] @relation("SubAdminAppointedBy")
+  subAdminRevocationsMade  SubAdminAssignment[] @relation("SubAdminRevokedBy")
+
+  promotionRecommendationsMade PromotionRecommendation[] @relation("RecommendedPromotions")
+  promotionDecisionsMade       PromotionRecommendation[] @relation("DecidedPromotions")
+  promotionEvents              PromotionEvent[]          @relation("PromotionActor")
+
+  reportsFiled    Report[] @relation("ReportsFiled")
+  reportsResolved Report[] @relation("ReportsResolved")
+
+  deletionRequestsMade  DeletionRequest[] @relation("DeletionRequestedBy")
+  deletionDecisionsMade DeletionRequest[] @relation("DeletionDecidedBy")
+
+  notifications     Notification[]
+  adminOverrideLogs AdminOverrideLog[]
+
+  // §1.2 — "reg_no validated unique within the selected college only — two
+  // colleges may reuse the same reg_no."
+  @@unique([collegeId, regNo])
+  @@map("users")
 }
 
-// Links a User to a ClassroomUnit as Main CR or Co-CR. Assigned/revoked by
-// that college's Sub Admin (or Owner Admin as fallback) — Section 3.3.
+// §1.3 — Teacher "may be assigned to teach one or more departments."
+model TeacherDepartment {
+  id           String   @id @default(cuid())
+  teacherId    String
+  departmentId String
+  assignedAt   DateTime @default(now())
+
+  teacher    User       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, departmentId])
+  @@map("teacher_departments")
+}
+
+// §1.5, §7.1 — "exactly one Sub Admin per college," appointed/removed by
+// Platform Admin. Modeled as a history table (not just a flag on User) so
+// that revocation + queue-transfer-on-replacement (§1.5, §8) can be audited.
 //
-// IMPORTANT: max 2 active seats per classroomUnitId (1 MAIN + 1 CO). The
-// partial unique index below enforces "at most one active MAIN and one
-// active CO per unit" at the DB level; still re-check in application code
-// inside a transaction to return a clean 409 instead of a raw DB error.
-model CRAssignment {
-  id String @id @default(cuid())
+// NOTE: enforcing "only one ACTIVE Sub Admin per college" is a partial-unique
+// constraint (`isActive = true`), which core Prisma cannot express directly.
+// Enforce it at the application layer, or add a DB-level partial unique index
+// via a raw migration, e.g.:
+//   CREATE UNIQUE INDEX one_active_sub_admin_per_college
+//   ON sub_admin_assignments (college_id) WHERE is_active;
+model SubAdminAssignment {
+  id            String    @id @default(cuid())
+  userId        String
+  collegeId     String
+  appointedById String // Platform Admin
+  appointedAt   DateTime  @default(now())
+  revokedById   String? // Platform Admin
+  revokedAt     DateTime?
+  isActive      Boolean   @default(true)
 
-  userId String
-  user   User   @relation("CRAssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+  user        User    @relation("SubAdminUser", fields: [userId], references: [id])
+  college     College @relation(fields: [collegeId], references: [id])
+  appointedBy User    @relation("SubAdminAppointedBy", fields: [appointedById], references: [id])
+  revokedBy   User?   @relation("SubAdminRevokedBy", fields: [revokedById], references: [id])
 
-  classroomUnitId String
-  classroomUnit   ClassroomUnit @relation(fields: [classroomUnitId], references: [id], onDelete: Cascade)
-
-  seat CrSeat
-
-  isActive Boolean @default(true)
-
-  assignedById String
-  assignedBy   User   @relation("CRAssignmentGrantedBy", fields: [assignedById], references: [id], onDelete: Restrict)
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  revokedAt DateTime?
-
-  @@index([userId])
-  @@index([classroomUnitId, seat, isActive])
+  @@index([collegeId, isActive])
+  @@map("sub_admin_assignments")
 }
 
-// Pending Student -> ClassroomUnit approval request; resolved by a CR,
-// Sub Admin, or Owner Admin (Section 4).
-model VerificationRequest {
-  id String @id @default(cuid())
+// §1.4 — "one CR and optionally one Co-CR per (Department + Session),
+// appointed by the Sub Admin." History table for the same audit reasons as
+// SubAdminAssignment, plus the emergency-appointment path from §1.4/§0.2.
+//
+// NOTE: "at most one active CR and one active Co-CR per (college, department,
+// session, type)" is likewise a partial-unique constraint — enforce via
+// application logic or a raw partial unique index, same caveat as above.
+model CrCoCrAssignment {
+  id           String     @id @default(cuid())
+  userId       String // the Student holding the elevation
+  collegeId    String
+  departmentId String
+  sessionId    String
+  type         CrCoCrType
 
-  userId String
-  user   User   @relation("VerificationRequester", fields: [userId], references: [id], onDelete: Cascade)
+  appointedById          String // normally Sub Admin
+  isEmergencyAppointment Boolean  @default(false) // §1.4 — Platform Admin exception
+  appointedAt            DateTime @default(now())
 
-  classroomUnitId String
-  classroomUnit   ClassroomUnit @relation(fields: [classroomUnitId], references: [id], onDelete: Cascade)
+  revokedById String?
+  revokedAt   DateTime?
+  isActive    Boolean   @default(true)
 
-  status VerificationStatus @default(PENDING)
+  user        User       @relation("CrCoCrUser", fields: [userId], references: [id])
+  college     College    @relation(fields: [collegeId], references: [id])
+  department  Department @relation(fields: [departmentId], references: [id])
+  session     Session    @relation(fields: [sessionId], references: [id])
+  appointedBy User       @relation("CrCoCrAppointedBy", fields: [appointedById], references: [id])
+  revokedBy   User?      @relation("CrCoCrRevokedBy", fields: [revokedById], references: [id])
 
-  resolvedById String?
-  resolvedBy   User?     @relation("VerificationResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
-  resolvedAt   DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // A user should only have one live pending request per classroom unit.
-  @@unique([userId, classroomUnitId])
-  @@index([classroomUnitId, status])
+  @@index([departmentId, sessionId, isActive])
+  @@map("cr_co_cr_assignments")
 }
 
-// ============================================================================
-// CONTENT & COMMUNICATION
-// ============================================================================
+// ----------------------------------------------------------------------------
+// Resources, versioning, and moderation
+// ----------------------------------------------------------------------------
 
-// Academic file metadata only — actual bytes live in Google Drive (Phase 1),
-// pluggable to Cloudflare R2 / S3 later (Section 8). Do not add binary
-// columns here.
+// §3.1–§3.9, §5.1, §8 — one row per *record* (§5.6 "moderation acts on
+// records, not files"). A new version (§3.5) is a NEW Resource row linked
+// back to the same version chain via rootResourceId, NOT a new field on the
+// same row. Lightweight metadata edits (§3.6) mutate this row in place with
+// no state change; structural edits (§3.6) mutate courseId/departmentId in
+// place AND reset state to PENDING — they do NOT create a new version.
 model Resource {
   id String @id @default(cuid())
 
-  title      String
-  category   String // e.g. "Lecture", "Notes", "PYQ", "Tutorial", "Software"
-  visibility Visibility @default(PRIVATE)
+  // --- version chain (§3.5) ---
+  rootResourceId String? // null on v1; points at v1's id for v2, v3, ...
+  versionNumber  Int        @default(1)
+  rootResource   Resource?  @relation("ResourceVersions", fields: [rootResourceId], references: [id])
+  versions       Resource[] @relation("ResourceVersions")
 
-  fileId     String
-  fileUrl    String
-  previewUrl String?
+  // --- ownership (§3.5 "based on resource ownership, not the uploader's
+  // current role") ---
+  uploaderId           String
+  uploaderRoleSnapshot Role // role at time of upload, for display (§4.1)
+  uploader             User   @relation("UploaderResources", fields: [uploaderId], references: [id])
 
-  courseId String?
-  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  // --- classification / placement ---
+  resourceType ResourceType
+  title        String
+  description  String?
+  tags         String[]
 
-  classroomUnitId String
-  classroomUnit   ClassroomUnit @relation(fields: [classroomUnitId], references: [id], onDelete: Cascade)
+  courseId     String
+  departmentId String // denormalized from course.departmentId; kept in
+  // sync at the application layer for indexing (§2.1)
+  sessionId    String? // required for PYQ (§3.3); optional otherwise
 
-  uploaderId String
-  uploader   User   @relation(fields: [uploaderId], references: [id], onDelete: Restrict)
+  course     Course     @relation(fields: [courseId], references: [id])
+  department Department @relation("ResourceDepartment", fields: [departmentId], references: [id])
+  session    Session?   @relation("ResourceSession", fields: [sessionId], references: [id])
+
+  // --- visibility & ownership scope (§0.3, §3.1, §3.2, §3.3) ---
+  visibility Visibility
+  collegeId  String? // null only for a PLATFORM resource uploaded
+  // directly by Platform Admin, who belongs to no college
+  college    College?   @relation(fields: [collegeId], references: [id])
+
+  // --- file / link storage ---
+  contentHash String? // for object-storage dedup (§3.1, §8 cross-college hash match)
+  fileUrl     String?
+  youtubeUrl  String? // §3.3 — YouTube link, no file storage consumed
+
+  // --- state machine (§5.1) ---
+  state ResourceState @default(PENDING)
+
+  // §3.7 — "In Review (Deletion Flagged)" is this flag on an IN_REVIEW row,
+  // never a separate state.
+  deletionFlag        Boolean   @default(false)
+  deletionRequestedAt DateTime?
+
+  moderatorId         String?
+  moderator           User?     @relation("ModeratedResources", fields: [moderatorId], references: [id])
+  moderatorDecisionAt DateTime?
+  moderatorReason     String? // shown in My Uploads / notifications (§3.8, §3.9)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Public-browsing queries filter on (visibility) directly; scoped private
-  // queries filter on (classroomUnitId). Index both access patterns.
-  @@index([visibility])
-  @@index([classroomUnitId])
-  @@index([courseId])
+  promotionRecommendations PromotionRecommendation[]
+  promotionEvents          PromotionEvent[]
+  reports                  Report[]
+  deletionRequests         DeletionRequest[]
+  notifications            Notification[]
+
+  // §3.1 duplicate-hash warning is scoped to (college, course, hash)
+  @@index([collegeId, courseId, contentHash])
+  @@index([rootResourceId])
+  @@index([state])
+  @@map("resources")
 }
 
-// Department+Session scoped announcement; author is one of the two CRs
-// of that unit (Section 6.2.2).
-model Notice {
+// §5.4 Path A, §7.3 — CR/Co-CR recommends; Sub Admin approves/denies.
+// Multiple rows may exist per resource over its lifetime (each invalidated
+// recommendation is superseded by a fresh one — §5.4 invalidation rule).
+model PromotionRecommendation {
+  id         String @id @default(cuid())
+  resourceId String
+
+  recommendedById String
+  recommendedAt   DateTime @default(now())
+
+  status PromotionRecommendationStatus @default(PENDING)
+
+  decidedById String?
+  decidedAt   DateTime?
+
+  invalidatedAt      DateTime?
+  invalidationReason String? // e.g. "report filed", "structural edit", "deletion requested" (§5.4)
+
+  resource      Resource @relation(fields: [resourceId], references: [id])
+  recommendedBy User     @relation("RecommendedPromotions", fields: [recommendedById], references: [id])
+  decidedBy     User?    @relation("DecidedPromotions", fields: [decidedById], references: [id])
+
+  promotionEvent PromotionEvent?
+
+  // NOTE: "only one PENDING recommendation per resource at a time" is again
+  // a partial-unique constraint — enforce at the application layer or via a
+  // raw partial unique index on (resource_id) WHERE status = 'PENDING'.
+  @@index([resourceId, status])
+  @@map("promotion_recommendations")
+}
+
+// §5.4, §5.4a, §7.5 — a durable log of every visibility change and *why* it
+// happened, covering both Path A and Path B, plus revocations (Sub Admin)
+// and exceptional Platform Admin action (§5.4a). Backs the "promotion counts
+// per college" analytic (§7.5).
+model PromotionEvent {
+  id         String @id @default(cuid())
+  resourceId String
+
+  path   PromotionPath
+  action PromotionEventAction
+
+  actorId String // Sub Admin (routine) or Platform Admin (exceptional, §5.4a)
+  actor   User   @relation("PromotionActor", fields: [actorId], references: [id])
+
+  isExceptionalOverride Boolean @default(false) // true only for §5.4a Platform Admin use
+
+  recommendationId String?                  @unique // set for Path A only
+  recommendation   PromotionRecommendation? @relation(fields: [recommendationId], references: [id])
+
+  justificationNote String? // required when isExceptionalOverride = true
+
+  createdAt DateTime @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+
+  @@index([resourceId])
+  @@map("promotion_events")
+}
+
+// §5.5 — reporting.
+model Report {
+  id         String @id @default(cuid())
+  resourceId String
+
+  reportedById String
+  reason       ReportReason
+  note         String?
+
+  status    ReportStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+
+  resolvedById String?
+  resolvedAt   DateTime?
+
+  resource   Resource @relation(fields: [resourceId], references: [id])
+  reportedBy User     @relation("ReportsFiled", fields: [reportedById], references: [id])
+  resolvedBy User?    @relation("ReportsResolved", fields: [resolvedById], references: [id])
+
+  @@index([resourceId, status])
+  @@map("reports")
+}
+
+// §3.7, §3.9 — durable deletion request/decision log. "Deletion Denied"
+// (§3.9) is DeletionRequestStatus.DENIED here — never a ResourceState.
+model DeletionRequest {
+  id         String @id @default(cuid())
+  resourceId String
+
+  requestedById String
+  requestedAt   DateTime @default(now())
+
+  status DeletionRequestStatus @default(PENDING)
+
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionReason String? // shown in My Uploads (§3.9) and notification (§3.8)
+
+  resource    Resource @relation(fields: [resourceId], references: [id])
+  requestedBy User     @relation("DeletionRequestedBy", fields: [requestedById], references: [id])
+  decidedBy   User?    @relation("DeletionDecidedBy", fields: [decidedById], references: [id])
+
+  @@index([resourceId, status])
+  @@map("deletion_requests")
+}
+
+// §3.8 — in-app notifications (email is additive, not modeled here since My
+// Uploads, not notification delivery, is the canonical status source).
+// Per the Path B rule (§0.2 Teacher, §3.8), no row is created for a Teacher
+// uploader on a direct Sub Admin promotion or its later re-review rejection.
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  resourceId String?
+  type       NotificationType
+  message    String
+  reason     String? // moderator / decision reason, when applicable
+  isRead     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+
+  user     User      @relation(fields: [userId], references: [id])
+  resource Resource? @relation(fields: [resourceId], references: [id])
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// §5.9, §5.4a, §1.4/§1.5, §7.5 — one unified audit log for every
+// exceptional Platform Admin action, whatever its flavor. §7.5: "Platform
+// Admin sees a log of all §5.9 CRUD override actions ... and this same log
+// includes any exceptional §5.4a promotion actions and any exceptional
+// §1.4/§1.5 role appointments."
+model AdminOverrideLog {
   id      String @id @default(cuid())
-  title   String
-  content String
+  actorId String // always Platform Admin
+  actor   User   @relation(fields: [actorId], references: [id])
 
-  classroomUnitId String
-  classroomUnit   ClassroomUnit @relation(fields: [classroomUnitId], references: [id], onDelete: Cascade)
+  overrideType OverrideType
+  targetType   String // e.g. "Resource", "PromotionRecommendation", "SubAdminAssignment", "CrCoCrAssignment"
+  targetId     String
+  action       String // e.g. "DELETE", "APPROVE_PROMOTION", "APPOINT_INTERIM_SUB_ADMIN"
 
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id], onDelete: Restrict)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Every notice-feed query is "give me notices for this exact unit" —
-  // this is the hot path index.
-  @@index([classroomUnitId, createdAt])
-}
-
-// CR-created discussion channel; linked to a classroomUnitId and an
-// optional courseId. Unique constraint on courseId when set (max 1
-// course-linked group); groups with courseId = null are general/topic
-// groups, unlimited per classroom unit (Section 6.2.3).
-//
-// IMPORTANT — Prisma cannot express a *partial* unique constraint
-// (`UNIQUE (course_id) WHERE course_id IS NOT NULL`) directly in the
-// schema DSL. `@@unique([courseId])` alone would incorrectly allow only
-// ONE group with courseId = null total, which breaks "unlimited general
-// groups." Add the partial index by hand after `prisma migrate dev` — see
-// the migration SQL block at the bottom of this file.
-model DiscussionGroup {
-  id   String @id @default(cuid())
-  name String
-
-  classroomUnitId String
-  classroomUnit   ClassroomUnit @relation(fields: [classroomUnitId], references: [id], onDelete: Cascade)
-
-  // Nullable: null = general/topic group (unlimited per unit).
-  // Non-null: course-linked group (max 1 per course — enforced via
-  // partial unique index, NOT @@unique here).
-  courseId String?
-  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
-
-  createdById String
-  createdBy   User   @relation(fields: [createdById], references: [id], onDelete: Restrict)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  memberships DiscussionMembership[]
-  messages    Message[]
-
-  @@index([classroomUnitId])
-  @@index([courseId])
-}
-
-// Which Users belong to a DiscussionGroup; managed by the creating/assigned
-// CR (Section 6.2.3).
-model DiscussionMembership {
-  id String @id @default(cuid())
-
-  groupId String
-  group   DiscussionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User   @relation("MembershipUser", fields: [userId], references: [id], onDelete: Cascade)
-
-  addedById String
-  addedBy   User   @relation("MembershipAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+  justificationNote String // required — §5.9, §5.4a, §1.4/§1.5 all require this
 
   createdAt DateTime @default(now())
 
-  @@unique([groupId, userId])
-  @@index([userId])
+  @@index([overrideType, createdAt])
+  @@map("admin_override_logs")
 }
-
-model Message {
-  id      String @id @default(cuid())
-  content String
-
-  groupId String
-  group   DiscussionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-
-  senderId String
-  sender   User   @relation(fields: [senderId], references: [id], onDelete: Restrict)
-
-  createdAt DateTime @default(now())
-
-  // Full history must be retained and searchable per group (Section 6.2.3).
-  // For real full-text search at scale, pair this with a Postgres GIN index
-  // on a `tsvector` generated column — see migration SQL note.
-  @@index([groupId, createdAt])
-}
-
-// Confidential note/suggestion content; author is always a CR
-// (Section 6.2.4). Highest-sensitivity table in the schema.
-model PersonalShare {
-  id      String @id @default(cuid())
-  content String
-
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id], onDelete: Restrict)
-
-  classroomUnitId String
-  classroomUnit   ClassroomUnit @relation(fields: [classroomUnitId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  recipients ShareRecipient[]
-
-  // IMPORTANT: no admin role — including Owner Admin — may ever read
-  // `content`. Application code must NEVER expose this table through a
-  // generic "admin can view all records" query path. Analytics must read
-  // from a separate count-only aggregate (see AuditLog / analytics notes
-  // in the implementation plan), never `SELECT ... FROM "PersonalShare"`
-  // directly outside of sender/recipient-scoped queries.
-  @@index([authorId])
-  @@index([classroomUnitId])
-}
-
-// Explicit list of Users a PersonalShare is visible to (Section 6.2.4).
-model ShareRecipient {
-  id String @id @default(cuid())
-
-  shareId String
-  share   PersonalShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
-
-  recipientId String
-  recipient   User   @relation(fields: [recipientId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  @@unique([shareId, recipientId])
-  @@index([recipientId])
-}
-
-// ============================================================================
-// AUDIT TRAIL (Sections 6.2.6 / 6.2.7 / 15)
-// ============================================================================
-
-// Append-only log of every promotion, demotion, ownership transfer, and
-// verification action. Feeds the Owner Admin's audit trail UI (Phase 3).
-// Grant the application's DB role INSERT + SELECT only on this table —
-// no UPDATE/DELETE — so the trail can't be tampered with after the fact.
-model AuditLog {
-  id String @id @default(cuid())
-
-  actorId String
-  actor   User   @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
-
-  action AuditAction
-
-  targetUserId String?
-  targetUser   User?   @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
-
-  previousRole String?
-  newRole      String?
-
-  // Free-form context: e.g. { collegeId, classroomUnitId, seat } —
-  // keeps this table generic across all four AuditAction types without
-  // needing a nullable column per possible context field.
-  metadata Json?
-
-  createdAt DateTime @default(now())
-
-  @@index([actorId])
-  @@index([targetUserId])
-  @@index([action, createdAt])
-}
-
-// ============================================================================
-// POST-MIGRATION SQL (run once, after `prisma migrate dev`)
-// Prisma's schema DSL can't express partial/conditional unique indexes,
-// so add these by hand in a migration's `migration.sql`:
-// ============================================================================
-//
-// -- Enforce "max 1 course-linked DiscussionGroup" without capping
-// -- general (courseId = null) groups:
-// CREATE UNIQUE INDEX "DiscussionGroup_courseId_unique_when_set"
-//   ON "DiscussionGroup" ("courseId")
-//   WHERE "courseId" IS NOT NULL;
-//
-// -- Enforce "at most one ACTIVE Main/Co CR per classroom unit":
-// CREATE UNIQUE INDEX "CRAssignment_unit_seat_active_unique"
-//   ON "CRAssignment" ("classroomUnitId", "seat")
-//   WHERE "isActive" = true;
-//
-// -- Enforce "at most one ACTIVE Sub Admin per college":
-// CREATE UNIQUE INDEX "AdminAssignment_college_subadmin_active_unique"
-//   ON "AdminAssignment" ("collegeId")
-//   WHERE "role" = 'SUB_ADMIN' AND "isActive" = true;
-//
-// -- Enforce "at most one ACTIVE Owner Admin platform-wide":
-// CREATE UNIQUE INDEX "AdminAssignment_owneradmin_active_unique"
-//   ON "AdminAssignment" (("role"))
-//   WHERE "role" = 'OWNER_ADMIN' AND "isActive" = true;
-//
-// -- Optional: full-text search index for Message history (Section 6.2.3):
-// ALTER TABLE "Message" ADD COLUMN "search_vector" tsvector
-//   GENERATED ALWAYS AS (to_tsvector('english', "content")) STORED;
-// CREATE INDEX "Message_search_vector_idx" ON "Message" USING GIN ("search_vector");
