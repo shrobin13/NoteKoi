@@ -1,0 +1,10 @@
+{
+  "name": "note-koi",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter '*' run dev",
+    "build": "pnpm --filter '*' run build",
+    "lint": "pnpm --filter '*' run lint"
+  }
+}
