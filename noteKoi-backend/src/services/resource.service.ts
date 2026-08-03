@@ -5,6 +5,11 @@ import { findActiveSubAdminAssignmentByUser } from "../repositories/subAdminAssi
 import { $Enums, type Resource, type DeletionRequest } from "../../generated/prisma/client.js";
 import { findResourcesByUploader } from "../repositories/resource.repository.js";
 
+type ResourceInputWithExtras = {
+  uploaderId?: string;
+  uploaderRoleSnapshot?: string | null;
+};
+
 type ResourceWithDeletionRequests = Resource & { deletionRequests?: DeletionRequest[] };
 
 function mapResourceToDto(resource: ResourceWithDeletionRequests) {
@@ -55,8 +60,8 @@ export async function createResourceRecord(input: {
   youtubeUrl?: string | null;
   contentHash?: string | null;
 }, actor?: { userId?: string; role?: string | null }) {
-  const derivedUploaderId = actor?.userId ?? (input as any).uploaderId;
-  const derivedUploaderRole = (actor?.role ?? (input as any).uploaderRoleSnapshot) as $Enums.Role | undefined;
+  const derivedUploaderId = actor?.userId ?? (input as ResourceInputWithExtras).uploaderId;
+  const derivedUploaderRole = (actor?.role ?? (input as ResourceInputWithExtras).uploaderRoleSnapshot) as $Enums.Role | undefined;
 
   const uploader = await findUserById(derivedUploaderId ?? "");
   if (!uploader) {

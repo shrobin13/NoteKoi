@@ -24,7 +24,7 @@ export async function createResourceHandler(req: Request, res: Response, next: N
       resourceType: body.resourceType as CreateResourceRecordInput["resourceType"],
       title: body.title as string,
       description: (body.description as string) ?? null,
-      tags: (body.tags as any) ?? [],
+      tags: Array.isArray(body.tags) ? body.tags.map((tag) => String(tag)) : [],
       courseId: body.courseId as string,
       departmentId: body.departmentId as string,
       sessionId: (body.sessionId as string) ?? undefined,

@@ -1,5 +1,4 @@
 import { prisma } from "../prisma/prisma.js";
-import type { Prisma } from "../../generated/prisma/client.js";
 import { $Enums } from "../../generated/prisma/client.js";
 
 export function findPendingPromotionRecommendationByResource(resourceId: string) {

@@ -1,3 +1,6 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 const eslintJs = await import('@eslint/js');
 const tsPlugin = await import('@typescript-eslint/eslint-plugin');
 const tsParser = await import('@typescript-eslint/parser');
@@ -5,7 +8,7 @@ const prettierPkg = await import('eslint-config-prettier');
 
 const eslintRecommended = eslintJs.default?.configs?.recommended;
 const prettierRules = prettierPkg.default?.rules ?? prettierPkg.rules ?? {};
-const tsconfigRootDir = new URL('.', import.meta.url).pathname;
+const tsconfigRootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default [
   eslintRecommended,

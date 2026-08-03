@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import type { AuthenticatedRequest } from "../middlewares/authenticate.js";
+import type { Prisma } from "../../generated/prisma/client.js";
 import { ok, created } from "../helpers/response.js";
 import * as stateMachine from "../services/resourceStateMachine.service.js";
 import { prisma } from "../prisma/prisma.js";
@@ -136,7 +137,7 @@ export async function getCrQueueHandler(req: Request, res: Response, next: NextF
 
     const ors = assignments.map((a) => ({ departmentId: a.departmentId, sessionId: a.sessionId }));
 
-    const where: any = {
+    const where: Prisma.ResourceWhereInput = {
       state: "PENDING",
       visibility: "COLLEGE",
       uploader: { role: "STUDENT" },
