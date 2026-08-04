@@ -15,7 +15,7 @@ const envSchema = z.object({
   SMTP_USER: z.string().min(1),
   SMTP_PASS: z.string().min(1),
   MAX_FILE_SIZE_MB: z.preprocess((value) => Number(value), z.number().int().positive()).default(20),
-  ALLOWED_MIME_TYPES: z.string().min(1),
+  ALLOWED_MIME_TYPES: z.string().default(""),
   ADMIN_EMAIL: z.string().email(),
   ADMIN_PASSWORD: z.string().min(8),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
