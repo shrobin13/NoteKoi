@@ -335,7 +335,7 @@ function SessionsPanel({ scopeDeptId, setScopeDeptId }: { scopeDeptId: string; s
       <Dialog open={showCreate} title="Add Session" onClose={() => setShowCreate(false)}>
         <div className="mt-4 space-y-3">
           <label className="block space-y-1.5 text-[12px]">
-            <span className="font-medium text-[var(--ink)]">Label (e.g. "2023–24 Even")</span>
+            <span className="font-medium text-[var(--ink)]">Label (e.g. &ldquo;2023–24 Even&rdquo;)</span>
             <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Session label" />
           </label>
           <label className="flex items-center gap-2 text-[12px]">

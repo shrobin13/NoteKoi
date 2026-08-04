@@ -20,10 +20,13 @@ export default function VerificationPendingPage() {
 
   useEffect(() => {
     if (user?.isVerified || user?.teacherVerificationStatus === "APPROVED") {
-      setShowToast(true);
+      const showTimeout = setTimeout(() => setShowToast(true), 0);
       qc.invalidateQueries({ queryKey: ["users", "me"] });
       const timer = setTimeout(() => router.push("/"), 2500);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(showTimeout);
+        clearTimeout(timer);
+      };
     }
   }, [user?.isVerified, user?.teacherVerificationStatus, qc, router]);
 

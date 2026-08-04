@@ -47,18 +47,8 @@ export default function MyUploadsPage() {
   const requestDeletionMutation = useRequestDeletionMutation();
   const resubmitMutation = useResubmitMutation();
 
-  const itemsByState = useMemo(() => {
-    const map = new Map<ResourceState, Resource[]>();
-    for (const g of STATE_GROUPS) map.set(g.state, []);
-    if (resourcesData?.items) {
-      for (const item of resourcesData.items) {
-        const list = map.get(item.state) ?? [];
-        list.push(item);
-        map.set(item.state, list);
-      }
-    }
-    return map;
-  }, [resourcesData?.items]);
+  // Compute group items inline to avoid manual memoization that React compiler
+  // cannot preserve. The data size is small so per-render filtering is acceptable.
 
   if (isLoadingUser || isLoading) {
     return (
@@ -129,7 +119,7 @@ export default function MyUploadsPage() {
       ) : (
         <div className="space-y-8">
           {STATE_GROUPS.map((group) => {
-            const groupItems = itemsByState.get(group.state) ?? [];
+            const groupItems = resourcesData?.items?.filter((item) => item.state === group.state) ?? [];
             if (groupItems.length === 0) return null;
 
             return (
