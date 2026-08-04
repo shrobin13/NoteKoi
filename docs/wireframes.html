@@ -1,0 +1,758 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>College Resource Platform — Wireframe Kit</title>
+<style>
+:root{
+  --ink:#1c1c1e; --ink-soft:#55555a; --line:#c7c7cc; --line-soft:#e2e2e5;
+  --ph:#eceef0; --ph-strong:#dcdee1; --paper:#ffffff; --canvas:#f4f4f6;
+  --accent:#2f2f33;
+  --amber:#c9973b; --blue:#3f6fd6; --green:#2f9e52; --red:#d24545; --gray:#9a9a9e; --orange:#d3792a; --violet:#7c6cd6;
+  --r-sm:6px; --r-md:12px;
+  --mono: "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --sans: -apple-system, "Inter", Helvetica, Arial, sans-serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--canvas);}
+.app{display:grid;grid-template-columns:270px 1fr 300px;min-height:100vh;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{background:var(--paper);border-right:1px solid var(--line-soft);padding:20px 14px;overflow-y:auto;height:100vh;position:sticky;top:0;}
+.brand{font-size:13px;font-weight:700;letter-spacing:.02em;margin-bottom:2px;}
+.brand-sub{font-size:11px;color:var(--ink-soft);margin-bottom:18px;}
+.group-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin:16px 6px 6px;font-weight:700;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--ink);border:1px solid transparent;}
+.nav-item:hover{background:var(--ph);}
+.nav-item.active{background:var(--ink);color:#fff;}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:var(--line);flex:none;}
+.nav-item.active .nav-dot{background:#fff;}
+
+/* ---------- Canvas ---------- */
+.canvas-wrap{padding:24px 28px;overflow-x:auto;}
+.canvas-frame{background:var(--paper);border:1px solid var(--line);border-radius:14px;max-width:1180px;margin:0 auto;overflow:hidden;}
+.frame-topbar{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line-soft);background:#fafafb;}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line);}
+.frame-url{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);margin-left:6px;}
+.screen{padding:0;}
+
+/* ---------- Annotation rail ---------- */
+.rail{padding:24px 20px;border-left:1px solid var(--line-soft);background:var(--paper);height:100vh;position:sticky;top:0;overflow-y:auto;}
+.rail h4{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 6px;}
+.rail .screen-title{font-size:17px;font-weight:700;margin:0 0 4px;}
+.rail .meta-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.tag{font-size:10.5px;font-family:var(--mono);padding:3px 7px;border:1px solid var(--line);border-radius:20px;color:var(--ink-soft);}
+.rail p, .rail li{font-size:12.3px;line-height:1.55;color:var(--ink-soft);}
+.rail ul{margin:0;padding-left:16px;}
+.rail li{margin-bottom:6px;}
+
+/* ---------- Wireframe primitives ---------- */
+.ph{background:var(--ph);border-radius:4px;}
+.line{height:8px;background:var(--ph-strong);border-radius:3px;margin-bottom:6px;}
+.avatar{border-radius:50%;background:var(--ph-strong);flex:none;}
+.icon{width:16px;height:16px;background:var(--ph-strong);border-radius:4px;flex:none;}
+.card{border:1px solid var(--line-soft);border-radius:var(--r-md);padding:12px;background:#fff;}
+.label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#a9a9ae;font-family:var(--mono);}
+.btn{display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;padding:9px 16px;border-radius:8px;border:1px solid var(--line);}
+.btn-primary{background:var(--ink);color:#fff;border-color:var(--ink);}
+.btn-secondary{background:#fff;color:var(--ink);}
+.btn-ghost{background:transparent;color:var(--ink-soft);border-color:transparent;}
+.btn-danger{background:#fff;color:var(--red);border-color:var(--red);}
+.input{border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:12px;color:#b7b7bc;background:#fff;}
+.badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;display:inline-block;letter-spacing:.02em;}
+.b-pending{background:#f6ecd8;color:var(--amber);}
+.b-review{background:#e6ecfb;color:var(--blue);}
+.b-approved{background:#e3f4e8;color:var(--green);}
+.b-rejected{background:#fbe6e6;color:var(--red);}
+.b-superseded{background:#eceef0;color:var(--gray);}
+.b-deletion{background:#fbe9db;color:var(--orange);}
+.b-deleted{background:#eceef0;color:var(--gray);text-decoration:line-through;}
+.b-platform{background:#ece9fb;color:var(--violet);}
+.b-college{background:#eceef0;color:#66666b;}
+.b-role{background:#111;color:#fff;}
+
+/* header bars reused across screens */
+.topnav{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--line-soft);}
+.topnav-left{display:flex;align-items:center;gap:18px;}
+.logo{width:22px;height:22px;background:var(--ink);border-radius:6px;}
+.navlinks{display:flex;gap:16px;}
+.navlink{font-size:12px;color:var(--ink-soft);font-weight:600;}
+.navlink.active{color:var(--ink);}
+.topnav-right{display:flex;align-items:center;gap:12px;}
+.search-bar{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:230px;}
+.search-bar .icon{width:12px;height:12px;}
+.search-bar span{font-size:11.5px;color:#b7b7bc;}
+
+.crumb{display:flex;align-items:center;gap:6px;padding:12px 20px 0;font-size:11.5px;color:var(--ink-soft);}
+.crumb b{color:var(--ink);font-weight:700;}
+
+.body-pad{padding:18px 20px 28px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+.row-between{display:flex;align-items:center;justify-content:space-between;}
+.fab{position:absolute;right:26px;bottom:26px;width:52px;height:52px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 16px rgba(0,0,0,.18);}
+.rel{position:relative;}
+.sidebar-panel{border-right:1px solid var(--line-soft);padding:16px;}
+.table{width:100%;border-collapse:collapse;}
+.table th{text-align:left;font-size:10px;text-transform:uppercase;color:#a9a9ae;letter-spacing:.05em;padding:8px 10px;border-bottom:1px solid var(--line-soft);}
+.table td{padding:10px;border-bottom:1px solid var(--line-soft);font-size:12px;vertical-align:middle;}
+.chip{font-size:10.5px;border:1px solid var(--line);border-radius:20px;padding:4px 10px;color:var(--ink-soft);}
+.chip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+.modal-overlay{position:absolute;inset:0;background:rgba(20,20,22,.42);display:flex;align-items:center;justify-content:center;}
+.modal{width:420px;background:#fff;border-radius:16px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.25);}
+.stepper{display:flex;gap:6px;margin-bottom:16px;}
+.step{flex:1;height:4px;border-radius:3px;background:var(--ph-strong);}
+.step.done{background:var(--ink);}
+.kv{display:flex;justify-content:space-between;font-size:11.5px;padding:7px 0;border-bottom:1px dashed var(--line-soft);}
+.kv span:first-child{color:var(--ink-soft);}
+.hero{padding:40px 20px 24px;text-align:left;}
+.hero .line{height:12px;}
+.divider{height:1px;background:var(--line-soft);margin:14px 0;}
+.small{font-size:11px;color:var(--ink-soft);}
+.flow-arrow{font-size:16px;color:var(--line);align-self:center;}
+.mono{font-family:var(--mono);}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="canvas-wrap">
+    <div class="canvas-frame">
+      <div class="frame-topbar">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="frame-url" id="frameUrl">app.platform.edu/discover</div>
+      </div>
+      <div class="screen" id="screen"></div>
+    </div>
+  </div>
+  <div class="rail" id="rail"></div>
+</div>
+
+<script>
+/* ================= WIREFRAME PRIMITIVES ================= */
+const line = (w='100%', h=8) => `<div class="line" style="width:${w};height:${h}px"></div>`;
+const lines = (n, w) => Array.from({length:n}).map((_,i)=>line(w?w[i]||'100%':(i===n-1?'60%':'100%'))).join('');
+const av = (s=32) => `<div class="avatar" style="width:${s}px;height:${s}px"></div>`;
+const ic = () => `<div class="icon"></div>`;
+const ph = (h=90) => `<div class="ph" style="height:${h}px;width:100%"></div>`;
+const btn = (label,kind='secondary') => `<div class="btn btn-${kind}">${label}</div>`;
+const input = (label) => `<div class="input">${label}</div>`;
+const label = (t) => `<div class="label">${t}</div>`;
+const chip = (t,active) => `<div class="chip ${active?'active':''}">${t}</div>`;
+
+const badges = {
+  PENDING:'<span class="badge b-pending">PENDING</span>',
+  IN_REVIEW:'<span class="badge b-review">IN REVIEW</span>',
+  APPROVED:'<span class="badge b-approved">APPROVED</span>',
+  REJECTED:'<span class="badge b-rejected">REJECTED</span>',
+  SUPERSEDED:'<span class="badge b-superseded">SUPERSEDED</span>',
+  DELETION:'<span class="badge b-deletion">DELETION REQUESTED</span>',
+  DELETED:'<span class="badge b-deleted">DELETED</span>',
+  PLATFORM:'<span class="badge b-platform">PLATFORM</span>',
+  COLLEGE:'<span class="badge b-college">COLLEGE</span>',
+};
+const roleBadge = (r) => `<span class="badge b-role">${r}</span>`;
+
+function topnav(active, opts={}){
+  const {role='Student', upload=true, notif=3} = opts;
+  const items = [
+    {k:'discover',t:'Discover'},{k:'search',t:'Search'},
+  ];
+  let ctx = [];
+  if(opts.myUploads) ctx.push({k:'uploads',t:'My Uploads'});
+  if(opts.moderate) ctx.push({k:'moderate',t:'Moderate'});
+  if(opts.manage) ctx.push({k:'manage',t:'Manage'});
+  if(opts.admin) ctx.push({k:'admin',t:'Administration'});
+  const all = [...items, ...ctx];
+  return `<div class="topnav">
+    <div class="topnav-left">
+      <div class="logo"></div>
+      <div class="navlinks">
+        ${all.map(i=>`<div class="navlink ${i.k===active?'active':''}">${i.t}</div>`).join('')}
+      </div>
+    </div>
+    <div class="topnav-right">
+      <div class="search-bar">${ic()}<span>Search courses, resources…</span></div>
+      ${upload? `<div class="btn btn-primary">+ Upload</div>`:''}
+      <div style="position:relative">${ic()}${notif? `<div style="position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:var(--red);color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center">${notif}</div>`:''}</div>
+      ${av(28)} ${roleBadge(role)}
+    </div>
+  </div>`;
+}
+function crumb(parts){ return `<div class="crumb">${parts.map((p,i)=>`${i>0?'<span>›</span>':''}<b>${p}</b>`).join('')}</div>`;}
+
+function resourceCard(type, title, state, vis){
+  return `<div class="card">
+    ${ph(70)}
+    <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${badges[state]||''} ${badges[vis]||''}</div>
+    <div style="margin-top:8px;font-size:13px;font-weight:700">${title}</div>
+    <div class="small" style="margin-top:4px">${type} · ${line('50%',6)}</div>
+  </div>`;
+}
+
+/* ================= SCREEN RENDERERS ================= */
+
+function sAuth(kind){
+  const titles = {signin:'Sign In', regStudent:'Register — Student', regTeacher:'Register — Teacher', forgot:'Forgot / Reset Password'};
+  const fields = {
+    signin:['College (select)','Email','Password'],
+    regStudent:['College (select)','Full name','Email','Reg. No.','Department (select)','Session (select)','Password'],
+    regTeacher:['College (select)','Full name','Email','Department(s) (multi-select)','Password'],
+    forgot:['Email'],
+  };
+  return `<div class="hero" style="max-width:420px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:22px">
+      <div class="logo" style="margin:0 auto 12px"></div>
+      <div style="font-size:20px;font-weight:800">${titles[kind]}</div>
+      <div class="small" style="margin-top:4px">One account per college scope (§0.2)</div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      ${fields[kind].map(f=>`${label(f)}${input(f)}`).join('')}
+      ${btn(kind==='forgot'?'Send reset link':'Continue','primary')}
+      ${kind!=='forgot'?`<div class="small" style="text-align:center">Forgot password? · Already have an account?</div>`:''}
+    </div>
+    ${kind.startsWith('reg')?`<div class="small" style="margin-top:10px;text-align:center">After registering, account enters a <b>Verification Pending</b> state until ${kind==='regTeacher'?'Sub Admin approves upload access (§5.8)':'email/ID verification completes (§1.2)'}.</div>`:''}
+  </div>`;
+}
+
+function sVerifyPending(kind){
+  return `<div class="hero" style="max-width:440px;margin:60px auto;text-align:center">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--ph);margin:0 auto 18px"></div>
+    ${badges.PENDING}
+    <div style="font-size:19px;font-weight:800;margin-top:14px">Verification pending</div>
+    <div class="small" style="margin-top:8px;line-height:1.6">
+      ${kind==='student'? 'Your student account is awaiting verification (isVerified = false). Browsing is available; uploading unlocks once verified.'
+      : 'Your teacher account is awaiting Sub Admin approval (PENDING_VERIFICATION). Upload access unlocks once verified (§5.8).'}
+    </div>
+    <div style="margin-top:20px;display:flex;gap:10px;justify-content:center">${btn('Browse Discover','secondary')}${btn('Contact Sub Admin','ghost')}</div>
+  </div>`;
+}
+
+function sDiscover(){
+  return `${topnav('discover',{role:'Student',myUploads:true})}
+  <div class="hero">
+    <div class="label">Discover</div>
+    <div style="font-size:28px;font-weight:800;margin:6px 0 4px">Find what your course needs, fast.</div>
+    <div class="small">Scoped to your college by default — resources marked PLATFORM are visible everywhere.</div>
+  </div>
+  <div class="body-pad rel">
+    <div class="row-between" style="margin-bottom:14px">
+      <div style="display:flex;gap:8px">${chip('All',true)}${chip('Class Notes')}${chip('PYQ')}${chip('Syllabus')}${chip('Video')}${chip('Book PDF')}</div>
+      <div class="small">Recently viewed courses ›</div>
+    </div>
+    <div class="grid-3">
+      ${resourceCard('PYQ','Data Structures — End Sem 2023','APPROVED','COLLEGE')}
+      ${resourceCard('LECTURE_NOTES','Thermodynamics Unit 4','APPROVED','PLATFORM')}
+      ${resourceCard('SYLLABUS','CSE Dept Syllabus 2024-25','APPROVED','COLLEGE')}
+      ${resourceCard('VIDEO','Organic Chemistry — Reactions','APPROVED','PLATFORM')}
+      ${resourceCard('CLASS_NOTES','Digital Logic — Ch. 3','APPROVED','COLLEGE')}
+      ${resourceCard('BOOK_PDF','Engineering Mathematics Vol.1','APPROVED','PLATFORM')}
+    </div>
+    <div class="fab">+</div>
+  </div>`;
+}
+
+function sSearch(){
+  return `${topnav('search',{role:'Student',myUploads:true})}
+  <div class="body-pad">
+    <div class="search-bar" style="width:100%;margin-bottom:14px">${ic()}<span>“data structures pyq”</span></div>
+    <div class="row-between" style="margin-bottom:12px">
+      <div class="small">128 results · scope: <b>My College</b> <span class="chip" style="margin-left:6px">+ include Platform-wide</span></div>
+      <div style="display:flex;gap:8px">${chip('Sort: Relevance',true)}</div>
+    </div>
+    <div class="grid-3">
+      ${resourceCard('PYQ','DS End Sem 2023','APPROVED','COLLEGE')}
+      ${resourceCard('PYQ','DS Mid Sem 2022','APPROVED','COLLEGE')}
+      ${resourceCard('PYQ','DS End Sem 2021','APPROVED','PLATFORM')}
+      ${resourceCard('CLASS_NOTES','DS Linked List Notes','APPROVED','COLLEGE')}
+      ${resourceCard('VIDEO','DS Recap Lecture','APPROVED','PLATFORM')}
+      ${resourceCard('SYLLABUS','DS Course Syllabus','APPROVED','COLLEGE')}
+    </div>
+  </div>`;
+}
+
+function sBrowse(){
+  return `${topnav('discover',{role:'Student',myUploads:true})}
+  ${crumb(['Computer Science','2022-23','Data Structures'])}
+  <div class="body-pad" style="display:grid;grid-template-columns:220px 1fr;gap:20px">
+    <div class="card">
+      <div class="label">Department</div>${lines(4)}
+      <div class="divider"></div>
+      <div class="label">Session (within dept.)</div>${lines(3)}
+      <div class="divider"></div>
+      <div class="label">Course</div>${lines(5)}
+    </div>
+    <div>
+      <div class="row-between" style="margin-bottom:12px">
+        <div style="font-size:16px;font-weight:800">Data Structures</div>
+        <div style="display:flex;gap:8px">${chip('All types',true)}${chip('PYQ')}${chip('Notes')}</div>
+      </div>
+      <div class="grid-3">
+        ${resourceCard('CLASS_NOTES','Arrays & Linked Lists','APPROVED','COLLEGE')}
+        ${resourceCard('PYQ','End Sem 2023','APPROVED','COLLEGE')}
+        ${resourceCard('LECTURE_NOTES','Trees & Graphs','APPROVED','PLATFORM')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function sResourceDetail(){
+  return `${topnav('discover',{role:'Student',myUploads:true})}
+  ${crumb(['Computer Science','2022-23','Data Structures','Resource'])}
+  <div class="body-pad" style="display:grid;grid-template-columns:1fr 260px;gap:24px">
+    <div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">${badges.APPROVED}${badges.COLLEGE}<span class="badge b-college">v3</span></div>
+      <div style="font-size:26px;font-weight:800;line-height:1.2">Data Structures — End Semester PYQ 2023</div>
+      <div class="small" style="margin-top:8px">Uploaded by <b>Riya S.</b> (Student) · Course: Data Structures · Session: 2022-23</div>
+      <div class="divider"></div>
+      ${ph(260)}
+      <div class="divider"></div>
+      <div class="label">Description</div>
+      ${lines(3)}
+      <div class="divider"></div>
+      <div class="label">Tags</div>
+      <div style="display:flex;gap:6px;margin-top:6px">${chip('exam')}${chip('semester')}${chip('DS')}</div>
+    </div>
+    <div class="card" style="height:fit-content">
+      <div class="label">Actions</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        ${btn('Download','primary')}
+        ${btn('View version history')}
+        ${btn('Report resource')}
+        <div class="small" style="margin-top:6px">Recommend for Platform — shown only to active CR/Co-CR on this dept+session (§5.4 Path A).</div>
+      </div>
+      <div class="divider"></div>
+      <div class="label">Chain of custody</div>
+      <div class="kv"><span>Uploader</span><span>Riya S. · Student</span></div>
+      <div class="kv"><span>Moderated by</span><span>CR — Aman K.</span></div>
+      <div class="kv"><span>Approved</span><span>12 Mar 2026</span></div>
+    </div>
+  </div>`;
+}
+
+function sVersionHistory(){
+  const rows = [['v3','APPROVED','12 Mar 2026','Riya S.'],['v2','SUPERSEDED','02 Feb 2026','Riya S.'],['v1','SUPERSEDED','19 Jan 2026','Riya S.']];
+  return `${topnav('discover',{role:'Student',myUploads:true})}
+  ${crumb(['Data Structures','Resource','Version History'])}
+  <div class="body-pad">
+    <div style="font-size:18px;font-weight:800;margin-bottom:12px">Version history</div>
+    <table class="table"><thead><tr><th>Version</th><th>State</th><th>Date</th><th>Uploader</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td class="mono">${r[0]}</td><td>${badges[r[1]]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${btn('View','ghost')}</td></tr>`).join('')}</tbody></table>
+    <div class="small" style="margin-top:10px">A new version is a linked record (rootResourceId chain) — moderation restarts per version; ownership carries by resource, not uploader's current role (§3.5).</div>
+  </div>`;
+}
+
+function sUploadFlow(){
+  return `${topnav('discover',{role:'Student',myUploads:true})}
+  <div class="hero" style="max-width:520px;margin:0 auto">
+    <div class="stepper">${[1,1,1,0].map(d=>`<div class="step ${d?'done':''}"></div>`).join('')}</div>
+    <div class="small">Step 3 of 4 — Classification</div>
+    <div style="font-size:20px;font-weight:800;margin:6px 0 16px">Where does this belong?</div>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      ${label('Department')}${input('Computer Science')}
+      ${label('Course')}${input('Data Structures')}
+      ${label('Session (required for PYQ)')}${input('2022-23')}
+      <div class="small">Duplicate-hash warning surfaces inline here if a match is found in this college+course (§3.1).</div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">${btn('Back','ghost')}${btn('Next: Visibility','primary')}</div>
+    </div>
+  </div>`;
+}
+
+function sMyUploads(){
+  const rows = [
+    ['Data Structures PYQ 2023','PYQ','APPROVED','COLLEGE'],
+    ['OS Notes — Deadlocks','CLASS_NOTES','IN_REVIEW','COLLEGE'],
+    ['DBMS Syllabus','SYLLABUS','REJECTED','COLLEGE'],
+    ['Networks Lecture v2','LECTURE_NOTES','DELETION','COLLEGE'],
+  ];
+  return `${topnav('uploads',{role:'Student',myUploads:true})}
+  <div class="body-pad">
+    <div class="row-between" style="margin-bottom:14px">
+      <div style="font-size:18px;font-weight:800">My Uploads</div>
+      <div style="display:flex;gap:8px">${chip('All',true)}${chip('Pending')}${chip('Approved')}${chip('Rejected')}${chip('Deletion')}</div>
+    </div>
+    <table class="table"><thead><tr><th>Title</th><th>Type</th><th>State</th><th>Visibility</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${badges[r[2]]}</td><td>${badges[r[3]]}</td><td>${btn('View','ghost')}</td></tr>`).join('')}</tbody></table>
+    <div class="small" style="margin-top:10px">Rejection/denial reasons and deletion decision notes are shown inline on the row, one click away (§3.9).</div>
+  </div>`;
+}
+
+function sNotifications(){
+  const items = [
+    ['Resource approved','“OS Notes — Deadlocks” was approved.'],
+    ['Promotion recommendation approved','Sub Admin approved your CR’s recommendation for Platform visibility.'],
+    ['Deletion denied','Your deletion request was denied — reason attached.'],
+  ];
+  return `${topnav('discover',{role:'Student',myUploads:true})}
+  <div class="body-pad" style="max-width:640px;margin:0 auto">
+    <div style="font-size:18px;font-weight:800;margin-bottom:14px">Notifications</div>
+    ${items.map(i=>`<div class="card" style="display:flex;gap:12px;margin-bottom:10px">
+      <div class="icon" style="width:22px;height:22px"></div>
+      <div style="flex:1"><b style="font-size:12.5px">${i[0]}</b><div class="small" style="margin-top:3px">${i[1]}</div></div>
+      <div class="small">2h</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function sProfile(){
+  return `${topnav('discover',{role:'Student',myUploads:true})}
+  <div class="body-pad" style="max-width:560px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">${av(56)}
+      <div><div style="font-weight:800;font-size:16px">Riya Sharma</div><div class="small">Student · Greenview College ${roleBadge('CR')}</div></div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      ${label('Name')}${input('Riya Sharma')}
+      ${label('Email')}${input('riya@college.edu')}
+      ${label('Department / Session')}${input('Computer Science · 2022-23')}
+      <div class="divider"></div>
+      ${label('Appearance')}<div style="display:flex;gap:8px">${chip('System',true)}${chip('Light')}${chip('Dark')}</div>
+      <div class="divider"></div>
+      ${btn('Log out','danger')}
+    </div>
+  </div>`;
+}
+
+function sQueue(kind){
+  const cfg = {
+    cr:{role:'CR', scope:'Your Department + Session', title:'Moderation Queue', rows:[['New upload — OS Notes','CLASS_NOTES','Riya S.'],['New upload — DBMS Syllabus','SYLLABUS','Aman K.'],['Report — DS PYQ 2023','REPORT: SPAM','—']]},
+    subadmin:{role:'Sub Admin', scope:'Your College', title:'Moderation Queue', rows:[['Escalated — flagged for deletion','LECTURE_NOTES','Priya T.'],['Report — Plagiarised content','REPORT','—'],['Deletion request','BOOK_PDF','Karan V.']]},
+  };
+  const c = cfg[kind];
+  return `${topnav('moderate',{role:c.role,myUploads:true,moderate:true,manage:kind==='subadmin'})}
+  <div class="body-pad" style="display:grid;grid-template-columns:1fr 320px;gap:20px">
+    <div>
+      <div class="row-between" style="margin-bottom:12px">
+        <div style="font-size:18px;font-weight:800">${c.title}</div>
+        <div class="small">Scope: <b>${c.scope}</b> · widen ›</div>
+      </div>
+      ${c.rows.map(r=>`<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+        <div class="ph" style="width:44px;height:44px;flex:none"></div>
+        <div style="flex:1"><b style="font-size:12.5px">${r[0]}</b><div class="small">${r[1]} · by ${r[2]}</div></div>
+        <div style="display:flex;gap:8px">${btn('Reject','danger')}${btn('Approve','primary')}</div>
+      </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="label">Selected item</div>
+      ${ph(140)}
+      <div class="divider"></div>
+      ${lines(3)}
+      <div class="divider"></div>
+      ${label('Rejection reason (if rejecting)')}${input('Required, min 10 chars')}
+      <div style="display:flex;gap:8px;margin-top:12px">${btn('Reject','danger')}${btn('Approve','primary')}</div>
+      <div class="small" style="margin-top:8px">Swipe right = Approve, swipe left = Reject on mobile — buttons remain the source of truth (§7.4).</div>
+    </div>
+  </div>`;
+}
+
+function sVerifyQueue(kind){
+  const isTeacher = kind==='teacher';
+  const rows = isTeacher? [['Dr. Meera N.','Physics','meera@college.edu'],['Prof. Rakesh J.','Mathematics','rakesh@college.edu']]
+                        : [['Ankit R.','CS · 2023-24','ankit@college.edu'],['Divya S.','ECE · 2023-24','divya@college.edu']];
+  return `${topnav('manage',{role: isTeacher?'Sub Admin':'CR', myUploads:true, moderate:!isTeacher, manage:isTeacher})}
+  <div class="body-pad">
+    <div style="font-size:18px;font-weight:800;margin-bottom:12px">${isTeacher?'Teacher Verification Queue':'Student Verification Queue'}</div>
+    <table class="table"><thead><tr><th>Name</th><th>${isTeacher?'Department':'Dept · Session'}</th><th>Email</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td class="mono">${r[2]}</td><td style="display:flex;gap:8px">${btn('Deny','danger')}${btn('Verify','primary')}</td></tr>`).join('')}</tbody></table>
+    <div class="small" style="margin-top:10px">${isTeacher? 'Teachers cannot upload until verified (§5.8).' : 'Sub Admin sees this as a fallback when no active CR/Co-CR exists for a dept+session (§0.2, §7.3).'}</div>
+  </div>`;
+}
+
+function sPromotionQueue(){
+  const rows = [['DS PYQ 2023 (v3)','Recommended by CR — Aman K.','PENDING'],['Thermo Unit 4 Notes','Recommended by Co-CR — Sana P.','PENDING']];
+  return `${topnav('manage',{role:'Sub Admin',myUploads:true,manage:true})}
+  <div class="body-pad">
+    <div style="font-size:18px;font-weight:800;margin-bottom:4px">Promotion Queue — Path A decisions</div>
+    <div class="small" style="margin-bottom:14px">Student-originated resources recommended by an active CR/Co-CR (§5.4 Path A).</div>
+    ${rows.map(r=>`<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+      <div class="ph" style="width:44px;height:44px;flex:none"></div>
+      <div style="flex:1"><b style="font-size:12.5px">${r[0]}</b><div class="small">${r[1]}</div></div>
+      ${badges.PENDING}
+      <div style="display:flex;gap:8px">${btn('Deny','danger')}${btn('Approve → Platform','primary')}</div>
+    </div>`).join('')}
+    <div class="small">Path B (Teacher-originated) never appears here — Sub Admin promotes those directly from Resource Detail.</div>
+  </div>`;
+}
+
+function sCrManagement(){
+  const rows = [['Computer Science','2022-23','Aman K.','CR'],['Computer Science','2022-23','Sana P.','CO_CR'],['Electronics','2023-24','—','CR (vacant)']];
+  return `${topnav('manage',{role:'Sub Admin',myUploads:true,manage:true})}
+  <div class="body-pad">
+    <div class="row-between" style="margin-bottom:12px">
+      <div style="font-size:18px;font-weight:800">CR / Co-CR Management</div>
+      ${btn('+ Appoint CR / Co-CR','primary')}
+    </div>
+    <table class="table"><thead><tr><th>Department</th><th>Session</th><th>Holder</th><th>Type</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="mono">${r[3]}</td><td>${btn('Revoke','ghost')}</td></tr>`).join('')}</tbody></table>
+    <div class="small" style="margin-top:10px">CR and Co-CR share identical permissions — the distinction here is organisational only (§0.2).</div>
+  </div>`;
+}
+
+function sAnalytics(kind){
+  const platform = kind==='platform';
+  return `${topnav('manage',{role: platform?'Platform Admin':'Sub Admin', myUploads:true, manage:!platform, admin:platform})}
+  <div class="body-pad">
+    <div style="font-size:18px;font-weight:800;margin-bottom:14px">${platform? 'Platform Analytics & Override Log':'Sub Admin Analytics'}</div>
+    <div class="grid-3" style="margin-bottom:16px">
+      ${['Uploads this month','Approval rate','Promotions to Platform'].map(t=>`<div class="card"><div class="label">${t}</div><div style="font-size:26px;font-weight:800;margin-top:6px">— </div></div>`).join('')}
+    </div>
+    ${ph(160)}
+    ${platform? `<div class="divider"></div><div class="label" style="margin-bottom:8px">Admin Override Log</div>
+    <table class="table"><thead><tr><th>Type</th><th>Target</th><th>Action</th><th>Justification</th><th>When</th></tr></thead>
+    <tbody>
+    <tr><td>${badges.PLATFORM}</td><td class="mono">resource_9f2</td><td>DELETE</td><td>DMCA request</td><td>3d ago</td></tr>
+    <tr><td>PROMOTION_DECISION</td><td class="mono">resource_a41</td><td>APPROVE_PROMOTION</td><td>Escalated report resolved</td><td>5d ago</td></tr>
+    <tr><td>ROLE_APPOINTMENT</td><td class="mono">assignment_c02</td><td>APPOINT_INTERIM_SUB_ADMIN</td><td>Sub Admin unavailable</td><td>1w ago</td></tr>
+    </tbody></table>` : ''}
+  </div>`;
+}
+
+/* ---- Consolidated Admin > All Users (promotions/demotions unified) ---- */
+function sAllUsers(){
+  const rows = [
+    ['Aman Kapoor','aman@college.edu','GV-CS-2201','STUDENT','CR — Computer Science / 2022-23'],
+    ['Sana Patel','sana@college.edu','GV-CS-2214','STUDENT','CO_CR — Computer Science / 2022-23'],
+    ['Dr. Meera Nair','meera@college.edu','—','TEACHER','VERIFIED'],
+    ['Prof. Rakesh Jain','rakesh@college.edu','—','TEACHER','PENDING_VERIFICATION'],
+    ['Karan Verma','karan@college.edu','GV-EC-2301','STUDENT','isVerified: false'],
+    ['Priya Thomas','priya@college.edu','—','SUB_ADMIN','Active — Greenview College'],
+  ];
+  return `${topnav('admin',{role:'Platform Admin',myUploads:true,admin:true})}
+  <div class="body-pad rel">
+    <div style="font-size:18px;font-weight:800;margin-bottom:2px">All Users</div>
+    <div class="small" style="margin-bottom:14px">Every role elevation, verification state, and promotion/demotion in one place — filter, then open a user for full detail.</div>
+    <div class="row-between" style="margin-bottom:14px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="search-bar" style="width:200px">${ic()}<span>Name</span></div>
+        <div class="search-bar" style="width:200px">${ic()}<span>Email</span></div>
+        <div class="search-bar" style="width:170px">${ic()}<span>Reg. No.</span></div>
+      </div>
+      <div style="display:flex;gap:8px">${chip('All roles',true)}${chip('Student')}${chip('Teacher')}${chip('CR/Co-CR')}${chip('Sub Admin')}</div>
+    </div>
+    <table class="table"><thead><tr><th>Name</th><th>Email</th><th>Reg. No.</th><th>Base role</th><th>Elevation / verification</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td class="mono">${r[1]}</td><td class="mono">${r[2]}</td><td>${roleBadge(r[3])}</td><td>${r[4].includes('PENDING')||r[4].includes('false')?badges.PENDING:'<span class="badge b-college">'+r[4]+'</span>'}</td><td>${btn('View','ghost')}</td></tr>`).join('')}</tbody></table>
+    <div class="modal-overlay">
+      <div class="modal">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">${av(44)}
+          <div><div style="font-weight:800">Aman Kapoor</div><div class="small">aman@college.edu · GV-CS-2201</div></div>
+        </div>
+        <div class="kv"><span>College</span><span>Greenview College</span></div>
+        <div class="kv"><span>Department / Session</span><span>Computer Science · 2022-23</span></div>
+        <div class="kv"><span>Base role</span><span>Student</span></div>
+        <div class="kv"><span>Current elevation</span><span>CR — since 12 Jan 2026</span></div>
+        <div class="divider"></div>
+        ${label('Update role')}
+        <div style="display:flex;gap:6px;margin:6px 0 12px">${chip('Student')}${chip('CR',true)}${chip('Co-CR')}${chip('Revoke elevation')}</div>
+        ${label('Verification status')}
+        <div style="display:flex;gap:6px;margin:6px 0 16px">${chip('Verified',true)}${chip('Unverified')}</div>
+        <div style="display:flex;justify-content:flex-end;gap:8px">${btn('Cancel','ghost')}${btn('Save changes','primary')}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---- Consolidated /admin/structure flow ---- */
+function sStructure(){
+  return `${topnav('admin',{role:'Platform Admin',myUploads:true,admin:true})}
+  <div class="body-pad">
+    <div class="row-between" style="margin-bottom:4px">
+      <div style="font-size:18px;font-weight:800">Structure</div>
+      ${btn('+ Add College','primary')}
+    </div>
+    <div class="small" style="margin-bottom:16px">Colleges, departments, sessions and courses are one connected structure — building a college walks you straight through what it needs, instead of four separate screens.</div>
+
+    <div class="grid-2" style="margin-bottom:18px">
+      <div class="card">
+        <div class="row-between"><b style="font-size:13px">Greenview College</b><span class="badge b-college">Active</span></div>
+        <div class="small" style="margin-top:6px">4 departments adopted · 12 sessions · 38 courses</div>
+        <div style="display:flex;gap:8px;margin-top:10px">${btn('Manage structure','secondary')}${btn('Deactivate','ghost')}</div>
+      </div>
+      <div class="card">
+        <div class="row-between"><b style="font-size:13px">Northfield Institute</b><span class="badge b-college">Active</span></div>
+        <div class="small" style="margin-top:6px">3 departments adopted · 9 sessions · 24 courses</div>
+        <div style="display:flex;gap:8px;margin-top:10px">${btn('Manage structure','secondary')}${btn('Deactivate','ghost')}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label" style="margin-bottom:10px">Add College — single guided form</div>
+      <div style="display:grid;grid-template-columns:1fr;gap:14px">
+        <div>
+          ${label('1 · College name')}
+          ${input('e.g. Greenview College')}
+        </div>
+        <div class="divider"></div>
+        <div>
+          <div class="row-between">${label('2 · Adopt departments')}${btn('+ Add department row','ghost')}</div>
+          <div class="small" style="margin:6px 0 8px">Pick existing platform departments, or type a new name to create one on the fly — no separate “create department” screen.</div>
+          ${['Computer Science','Electronics','Mechanical'].map(d=>`<div style="display:flex;gap:8px;margin-bottom:6px;align-items:center">${input(d)}${btn('remove','ghost')}</div>`).join('')}
+          ${input('+ type to add another department…')}
+        </div>
+        <div class="divider"></div>
+        <div>
+          <div class="row-between">${label('3 · Sessions per department')}<span class="small">auto-grouped by the departments above</span></div>
+          <div class="small" style="margin:6px 0 8px">Each department runs its own calendar (§7.4) — sessions are created inline, nested under the department they belong to.</div>
+          <div class="card" style="margin-bottom:8px">
+            <div class="small" style="margin-bottom:6px"><b>Computer Science</b></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">${chip('2021-22')}${chip('2022-23')}${chip('2023-24')}${chip('+ Add session')}</div>
+          </div>
+          <div class="card">
+            <div class="small" style="margin-bottom:6px"><b>Electronics</b></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">${chip('2022-23')}${chip('+ Add session')}</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div>
+          <div class="row-between">${label('4 · Courses per department (optional now, editable later)')}<span class="small">shared platform-wide once created</span></div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${chip('Data Structures')}${chip('Algorithms')}${chip('+ Add course')}</div>
+        </div>
+        <div class="row-between" style="margin-top:6px">
+          <span class="small">A course’s id never changes on rename — historical resource links stay intact (§7.4).</span>
+          <div style="display:flex;gap:8px">${btn('Save as draft','ghost')}${btn('Create College','primary')}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function sSubAdminMgmt(){
+  const rows = [['Priya Thomas','Greenview College','Active','12 Jan 2025'],['— vacant —','Northfield Institute','—','—']];
+  return `${topnav('admin',{role:'Platform Admin',myUploads:true,admin:true})}
+  <div class="body-pad">
+    <div class="row-between" style="margin-bottom:12px"><div style="font-size:18px;font-weight:800">Sub Admin Management</div>${btn('+ Appoint Sub Admin','primary')}</div>
+    <table class="table"><thead><tr><th>Sub Admin</th><th>College</th><th>Status</th><th>Since</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]==='Active'?'<span class="badge b-approved">ACTIVE</span>':'<span class="badge b-superseded">VACANT</span>'}</td><td>${r[3]}</td><td>${btn('Revoke / Replace','ghost')}</td></tr>`).join('')}</tbody></table>
+    <div class="small" style="margin-top:10px">Exactly one active Sub Admin per college; replacing one transfers their queue automatically (§1.5, §8).</div>
+  </div>`;
+}
+
+function sEmergency(){
+  return `${topnav('admin',{role:'Platform Admin',myUploads:true,admin:true})}
+  <div class="body-pad" style="max-width:520px">
+    <div style="font-size:18px;font-weight:800;margin-bottom:4px">Emergency Appointment</div>
+    <div class="small" style="margin-bottom:14px">Bypasses the normal Sub Admin appointment chain (§1.4/§1.5) — always logged.</div>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      ${label('Type')}<div style="display:flex;gap:6px">${chip('Interim Sub Admin',true)}${chip('Interim CR/Co-CR')}</div>
+      ${label('User')}${input('Search by name / email')}
+      ${label('College / Department / Session')}${input('Select scope')}
+      ${label('Justification note (required)')}${input('Why this exceptional action is needed')}
+      ${btn('Confirm emergency appointment','danger')}
+    </div>
+  </div>`;
+}
+
+function sCrudOverride(){
+  return `${topnav('admin',{role:'Platform Admin',myUploads:true,admin:true})}
+  <div class="body-pad" style="max-width:560px">
+    <div style="font-size:18px;font-weight:800;margin-bottom:4px">CRUD Override</div>
+    <div class="small" style="margin-bottom:14px">Direct resource edit/delete outside the normal moderation flow (§5.9) — exceptional, always logged.</div>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      ${label('Resource')}${input('Search by title / id')}
+      ${ph(90)}
+      ${label('Action')}<div style="display:flex;gap:6px">${chip('Edit metadata')}${chip('Force state change')}${chip('Delete',true)}</div>
+      ${label('Justification note (required)')}${input('Reason for bypassing normal moderation')}
+      ${btn('Apply override','danger')}
+    </div>
+  </div>`;
+}
+
+function sPromotionOverride(){
+  return `${topnav('admin',{role:'Platform Admin',myUploads:true,admin:true})}
+  <div class="body-pad" style="max-width:560px">
+    <div style="font-size:18px;font-weight:800;margin-bottom:4px">Promotion Override</div>
+    <div class="small" style="margin-bottom:14px">Exceptional promote/revoke outside routine Sub Admin decisions (§5.4a).</div>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      ${label('Resource')}${input('Search by title / id')}
+      ${label('Action')}<div style="display:flex;gap:6px">${chip('Promote to Platform',true)}${chip('Revoke to College')}</div>
+      ${label('Justification note (required)')}${input('Required for every exceptional override')}
+      ${btn('Apply override','danger')}
+    </div>
+  </div>`;
+}
+
+/* ================= SCREEN REGISTRY ================= */
+const SCREENS = [
+ {g:'Auth & Onboarding', id:'signin', t:'Sign In', role:'Guest', src:'§1.6', notes:['Single form, college selected first (scopes reg. no. uniqueness).'], render:()=>sAuth('signin')},
+ {g:'Auth & Onboarding', id:'reg-student', t:'Register — Student', role:'Guest', src:'§1.2', notes:['Reg. No. unique within college only — two colleges may reuse it.'], render:()=>sAuth('regStudent')},
+ {g:'Auth & Onboarding', id:'reg-teacher', t:'Register — Teacher', role:'Guest', src:'§1.3', notes:['Multi-select department(s) taught.'], render:()=>sAuth('regTeacher')},
+ {g:'Auth & Onboarding', id:'forgot', t:'Forgot / Reset Password', role:'Guest / any', src:'§1.6', notes:[], render:()=>sAuth('forgot')},
+ {g:'Auth & Onboarding', id:'verify-student', t:'Verification Pending (Student)', role:'Student', src:'§1.2', notes:['isVerified=false blocks upload, not browsing.'], render:()=>sVerifyPending('student')},
+ {g:'Auth & Onboarding', id:'verify-teacher', t:'Verification Pending (Teacher)', role:'Teacher', src:'§1.3, §5.8', notes:['PENDING_VERIFICATION blocks upload until Sub Admin approves.'], render:()=>sVerifyPending('teacher')},
+
+ {g:'Content & Discovery', id:'discover', t:'Discover / Home', role:'Everyone', src:'§2.1, §4.2', notes:['Content scoped per §0.3; FAB context-aware.'], render:sDiscover},
+ {g:'Content & Discovery', id:'search', t:'Search Results', role:'Everyone', src:'§2.2', notes:['Every result shows visibility inline.'], render:sSearch},
+ {g:'Content & Discovery', id:'browse', t:'Browse: Dept → Session → Course', role:'Everyone', src:'§2.1, §2.3', notes:['Only screen using breadcrumbs (true hierarchy).'], render:sBrowse},
+ {g:'Content & Discovery', id:'detail', t:'Resource Detail', role:'Everyone w/ access', src:'§4.1', notes:['Actions are role- and state-dependent, contextual toolbar.'], render:sResourceDetail},
+ {g:'Content & Discovery', id:'versions', t:'Version History', role:'Everyone, scoped', src:'§6', notes:['New version = new linked Resource row, not an in-place edit.'], render:sVersionHistory},
+
+ {g:'Upload & Personal', id:'upload', t:'Upload Flow', role:'Student/Teacher/SubAdmin/PA', src:'§3.1–§3.4', notes:['Step-by-step wizard on mobile; single form desktop.'], render:sUploadFlow},
+ {g:'Upload & Personal', id:'myuploads', t:'My Uploads', role:'Any uploader role', src:'§3.9', notes:['Reason/decision notes shown inline per row.'], render:sMyUploads},
+ {g:'Upload & Personal', id:'notifications', t:'Notifications', role:'Everyone authenticated', src:'§3.8', notes:['Path A vs Path B notification recipients differ.'], render:sNotifications},
+ {g:'Upload & Personal', id:'profile', t:'Profile / Account Settings', role:'Everyone authenticated', src:'§1.6', notes:[], render:sProfile},
+
+ {g:'CR / Co-CR', id:'queue-cr', t:'Moderation Queue — CR/Co-CR', role:'Active CR/Co-CR', src:'§5.2', notes:['Default scope: own Department+Session.'], render:()=>sQueue('cr')},
+ {g:'CR / Co-CR', id:'verify-students', t:'Student Verification Queue', role:'CR/Co-CR (Sub Admin fallback)', src:'§0.2, §7.3', notes:[], render:()=>sVerifyQueue('student')},
+
+ {g:'Sub Admin', id:'queue-subadmin', t:'Moderation Queue — Sub Admin', role:'Sub Admin', src:'§5.3', notes:['Default scope: own college.'], render:()=>sQueue('subadmin')},
+ {g:'Sub Admin', id:'verify-teachers', t:'Teacher Verification Queue', role:'Sub Admin', src:'§5.8', notes:[], render:()=>sVerifyQueue('teacher')},
+ {g:'Sub Admin', id:'promo-queue', t:'Promotion Queue (Path A)', role:'Sub Admin', src:'§5.4', notes:['Path B never appears here.'], render:sPromotionQueue},
+ {g:'Sub Admin', id:'cr-mgmt', t:'CR / Co-CR Management', role:'Sub Admin', src:'§1.4', notes:['Appoint/revoke, scoped to own college.'], render:sCrManagement},
+ {g:'Sub Admin', id:'analytics-sub', t:'Sub Admin Analytics', role:'Sub Admin', src:'§7.5, §7.2', notes:[], render:()=>sAnalytics('sub')},
+
+ {g:'Platform Admin', id:'structure', t:'Structure (College → Dept → Session → Course)', role:'Platform Admin', src:'§7.1, §7.4', notes:['Consolidated flow — replaces 4 separate CRUD screens with one guided form.'], render:sStructure},
+ {g:'Platform Admin', id:'all-users', t:'All Users (roles + verification)', role:'Platform Admin', src:'§0.2, §1.4, §1.5, §5.8', notes:['Consolidated promotion/demotion + verification, filterable, detail popup edits role & verification together.'], render:sAllUsers},
+ {g:'Platform Admin', id:'subadmin-mgmt', t:'Sub Admin Management', role:'Platform Admin', src:'§1.5', notes:['Kept separate: platform-level appointment, distinct authority tier from All Users edits.'], render:sSubAdminMgmt},
+ {g:'Platform Admin', id:'emergency', t:'Emergency Appointment', role:'Platform Admin', src:'§1.4, §1.5', notes:[], render:sEmergency},
+ {g:'Platform Admin', id:'crud-override', t:'CRUD Override', role:'Platform Admin', src:'§5.9', notes:[], render:sCrudOverride},
+ {g:'Platform Admin', id:'promo-override', t:'Promotion Override', role:'Platform Admin', src:'§5.4a', notes:[], render:sPromotionOverride},
+ {g:'Platform Admin', id:'analytics-platform', t:'Platform Analytics & Override Log', role:'Platform Admin', src:'§7.5', notes:['Unified log for all three OverrideType flavors.'], render:()=>sAnalytics('platform')},
+];
+
+/* ================= APP SHELL ================= */
+const sidebar = document.getElementById('sidebar');
+const screenEl = document.getElementById('screen');
+const railEl = document.getElementById('rail');
+const urlEl = document.getElementById('frameUrl');
+
+let groups = {};
+SCREENS.forEach(s=>{ (groups[s.g]=groups[s.g]||[]).push(s); });
+
+sidebar.innerHTML = `<div class="brand">College Resource Platform</div><div class="brand-sub">Wireframe kit · v1 · ${SCREENS.length} screens</div>` +
+  Object.entries(groups).map(([g,items])=>`
+    <div class="group-label">${g}</div>
+    ${items.map(s=>`<div class="nav-item" data-id="${s.id}"><span class="nav-dot"></span>${s.t}</div>`).join('')}
+  `).join('');
+
+function select(id){
+  const s = SCREENS.find(x=>x.id===id);
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.id===id));
+  screenEl.innerHTML = s.render();
+  urlEl.textContent = 'app.platform.edu/' + id;
+  railEl.innerHTML = `
+    <h4>Screen</h4>
+    <div class="screen-title">${s.t}</div>
+    <div class="meta-row"><span class="tag">${s.role}</span><span class="tag">${s.src}</span></div>
+    <h4 style="margin-top:18px">Notes</h4>
+    <ul>${(s.notes.length? s.notes : ['No screen-specific deviations — follows the shared component patterns.']).map(n=>`<li>${n}</li>`).join('')}</ul>
+    <h4 style="margin-top:18px">Legend</h4>
+    <ul>
+      <li>${badges.PENDING} waiting</li>
+      <li>${badges.IN_REVIEW} being worked</li>
+      <li>${badges.APPROVED} live</li>
+      <li>${badges.REJECTED} negative outcome</li>
+      <li>${badges.SUPERSEDED} inert / historical</li>
+      <li>${badges.DELETION} pending decision</li>
+      <li>${badges.PLATFORM} platform-wide visibility</li>
+      <li>${badges.COLLEGE} college-only visibility</li>
+    </ul>`;
+}
+
+sidebar.addEventListener('click', e=>{
+  const item = e.target.closest('.nav-item');
+  if(item) select(item.dataset.id);
+});
+
+select('discover');
+</script>
+</body>
+</html>
