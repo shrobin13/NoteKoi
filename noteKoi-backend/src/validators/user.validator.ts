@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const studentRegistrationSchema = z.object({
+  name: z.string().min(1).optional(),
   email: z.string().email(),
   password: z.string().min(8),
   collegeId: z.string().min(1),
@@ -10,6 +11,7 @@ export const studentRegistrationSchema = z.object({
 });
 
 export const teacherRegistrationSchema = z.object({
+  name: z.string().min(1).optional(),
   email: z.string().email(),
   password: z.string().min(8),
   collegeId: z.string().min(1),

@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { ResourceCard } from "@/components/shared/resource-card";
 import { EmptyStateBlock } from "@/components/shared/empty-state-block";
@@ -14,13 +13,23 @@ const categories: ResourceType[] = [
   "SYLLABUS",
   "VIDEO",
   "PYQ",
-  "BOOK_PDF"
+  "BOOK_PDF",
 ];
+
+const catLabel: Record<string, string> = {
+  CLASS_NOTES: "Class Notes",
+  LECTURE_NOTES: "Lecture Notes",
+  SYLLABUS: "Syllabus",
+  VIDEO: "Video",
+  PYQ: "PYQ",
+  BOOK_PDF: "Book PDF",
+};
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [includeOtherColleges, setIncludeOtherColleges] = useState(false);
+
   const { data } = useResourcesQuery({
     q: query,
     resourceType: selectedCategory ?? undefined,
@@ -28,118 +37,90 @@ export default function SearchPage() {
     limit: 20,
   });
 
-  const filteredResources = useMemo(
-    () => {
-      const currentResources = data?.items ?? [];
-      return currentResources.filter((resource) => {
-        const uploaderLabel =
-          typeof resource.uploader === "string"
-            ? resource.uploader
-            : resource.uploader.name ?? resource.uploader.id;
-
-        const matchesQuery =
-          query.trim().length === 0 ||
-          [resource.title, resource.description, uploaderLabel, resource.type]
-            .some((value) => value.toLowerCase().includes(query.trim().toLowerCase()));
-
-        const matchesCategory =
-          !selectedCategory || resource.type === selectedCategory;
-
-        return matchesQuery && matchesCategory;
-      });
-    },
-    [query, selectedCategory, data?.items]
-  );
+  const filteredResources = data?.items ?? [];
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Search</p>
-        <h1 className="mt-3 text-3xl font-semibold text-white">Find resources across the platform</h1>
-        <p className="mt-2 max-w-2xl text-slate-300">
-          Search by title, description, uploader, or resource type. Filter results instantly as you type.
-        </p>
+    <section className="mx-auto max-w-5xl space-y-6">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--ink-soft)]">Search</p>
+        <h1 className="mt-1 text-[22px] font-semibold text-[var(--ink)]">
+          Find resources across the platform
+        </h1>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_240px]">
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-800/80 bg-slate-900/80 p-6">
-            <Input
-              aria-label="Search resources"
-              placeholder="Search resources, titles, or uploaders"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="w-full"
-            />
-            <div className="mt-4 flex flex-wrap gap-2">
-              {categories.map((category) => {
-                const isSelected = selectedCategory === category;
-                return (
-                  <Button
-                    key={category}
-                    variant={isSelected ? "secondary" : "ghost"}
-                    className="rounded-full px-3 py-2 text-xs uppercase tracking-[0.22em]"
-                    onClick={() => setSelectedCategory(isSelected ? null : category)}
-                  >
-                    {category.replace("_", " ")}
-                  </Button>
-                );
-              })}
-            </div>
+      {/* Search controls */}
+      <div className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--paper)] p-4 space-y-3">
+        <Input
+          aria-label="Search resources"
+          placeholder="Search by title, description, or uploader…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
 
-            <div className="mt-4 border-t border-slate-800/80 pt-4">
+        {/* Category chips */}
+        <div className="flex flex-wrap gap-1.5">
+          {categories.map((category) => {
+            const isSelected = selectedCategory === category;
+            return (
               <button
+                key={category}
                 type="button"
-                onClick={() => setIncludeOtherColleges((prev) => !prev)}
-                className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium transition ${
-                  includeOtherColleges
-                    ? "border-indigo-500 bg-indigo-950/40 text-indigo-300"
-                    : "border-slate-700 bg-slate-950/60 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                onClick={() => setSelectedCategory(isSelected ? null : category)}
+                className={`rounded-[20px] border px-3 py-1 text-[11px] font-semibold transition ${
+                  isSelected
+                    ? "border-[var(--ink)] bg-[var(--ink)] text-white"
+                    : "border-[var(--line)] text-[var(--ink-soft)] hover:border-[var(--ink-soft)]"
                 }`}
               >
-                <span
-                  className={`h-3.5 w-3.5 rounded-full border transition ${
-                    includeOtherColleges
-                      ? "border-indigo-500 bg-indigo-500"
-                      : "border-slate-600 bg-transparent"
-                  }`}
-                />
-                Include other colleges
+                {catLabel[category]}
               </button>
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-slate-800/80 bg-slate-900/80 p-6 text-sm text-slate-300">
-            <p className="font-semibold text-white">Search results</p>
-            <p className="mt-2">
-              {filteredResources.length} matching resource{filteredResources.length === 1 ? "" : "s"} found.
-            </p>
-            {selectedCategory ? (
-              <p className="mt-3 text-slate-400">Filtered by type: {selectedCategory.replace("_", " ")}</p>
-            ) : null}
-            {includeOtherColleges ? (
-              <p className="mt-1 text-slate-400">Showing results from all colleges.</p>
-            ) : null}
-          </div>
+            );
+          })}
         </div>
 
-        <div className="space-y-6">
-          {filteredResources.length > 0 ? (
-            <div className="grid gap-6">
-              {filteredResources.map((resource) => (
-                <ResourceCard key={resource.id} {...resource} />
-              ))}
-            </div>
-          ) : (
-            <EmptyStateBlock
-              title="No matching resources"
-              description="Try a broader search term or remove the current category filter to see more resources."
-              actionText="Clear filters"
-              actionHref="/search"
+        {/* Include other colleges toggle */}
+        <div className="border-t border-[var(--line-soft)] pt-3">
+          <button
+            type="button"
+            onClick={() => setIncludeOtherColleges((prev) => !prev)}
+            className={`flex items-center gap-2 rounded-[20px] border px-3 py-1.5 text-[11px] font-medium transition ${
+              includeOtherColleges
+                ? "border-[#3f6fd6] bg-[#e6ecfb] text-[#3f6fd6]"
+                : "border-[var(--line)] text-[var(--ink-soft)] hover:border-[var(--ink-soft)]"
+            }`}
+          >
+            <span
+              className={`h-3 w-3 rounded-full border transition ${
+                includeOtherColleges ? "border-[#3f6fd6] bg-[#3f6fd6]" : "border-[var(--line)]"
+              }`}
             />
-          )}
+            Include other colleges
+          </button>
         </div>
       </div>
+
+      {/* Result count */}
+      <p className="text-[12px] text-[var(--ink-soft)]">
+        {filteredResources.length} matching resource{filteredResources.length === 1 ? "" : "s"} found
+        {selectedCategory ? ` · ${catLabel[selectedCategory]}` : ""}
+        {includeOtherColleges ? " · All colleges" : ""}
+      </p>
+
+      {/* Results */}
+      {filteredResources.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredResources.map((resource) => (
+            <ResourceCard key={resource.id} {...resource} />
+          ))}
+        </div>
+      ) : (
+        <EmptyStateBlock
+          title="No matching resources"
+          description="Try a broader search term or remove the current category filter."
+          actionText="Clear filters"
+          actionHref="/search"
+        />
+      )}
     </section>
   );
 }

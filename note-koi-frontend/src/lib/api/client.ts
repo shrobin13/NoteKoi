@@ -14,20 +14,20 @@ export async function request<T = unknown>(input: RequestInfo, init?: RequestIni
   const method = (init?.method ?? "GET").toUpperCase();
   const isMutating = !["GET", "HEAD", "OPTIONS"].includes(method);
 
-  const csrfHeaders: Record<string, string> = {};
-  if (isMutating) {
-    const token = getCsrfToken();
-    if (token) csrfHeaders["x-csrf-token"] = token;
-  }
+  // Destructure headers out of init so spreading initRest below doesn't
+  // accidentally overwrite the merged headers object (the old bug).
+  const { headers: initHeaders, ...initRest } = init ?? {};
+
+  const csrfToken = isMutating ? getCsrfToken() : null;
 
   const res = await fetch(String(input), {
     credentials: "include",
+    ...initRest,
     headers: {
       Accept: "application/json",
-      ...csrfHeaders,
-      ...(init?.headers as Record<string, string> | undefined),
+      ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+      ...(initHeaders as Record<string, string> | undefined),
     },
-    ...init,
   });
 
   let body: unknown = null;
@@ -46,11 +46,12 @@ export async function request<T = unknown>(input: RequestInfo, init?: RequestIni
   if (!res.ok) {
     const errObj =
       typeof body === "object" && body !== null && "error" in body
-        ? (body as { error?: { message?: string } }).error
+        ? (body as { error?: { message?: string; code?: string } }).error
         : undefined;
     const message = errObj?.message || res.statusText || "API error";
     const err = new Error(message) as ApiError;
     err.status = res.status;
+    err.code = errObj?.code;
     err.body = body;
     throw err;
   }

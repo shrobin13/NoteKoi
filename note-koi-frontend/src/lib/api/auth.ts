@@ -7,6 +7,7 @@ export interface LoginPayload {
 }
 
 export interface RegisterStudentPayload {
+  name?: string;
   email: string;
   password: string;
   collegeId: string;
@@ -16,6 +17,7 @@ export interface RegisterStudentPayload {
 }
 
 export interface RegisterTeacherPayload {
+  name?: string;
   email: string;
   password: string;
   collegeId: string;

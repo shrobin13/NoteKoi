@@ -6,6 +6,7 @@ import { useDropzone } from "react-dropzone";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useUploadResourceMutation } from "@/hooks/useUploadResourceMutation";
@@ -13,11 +14,13 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useDepartmentsQuery } from "@/hooks/useDepartmentsQuery";
 import { useCoursesQuery } from "@/hooks/useCoursesQuery";
 import { useSessionsQuery } from "@/hooks/useSessionsQuery";
-import { ResourceType, UploaderRoleSnapshot, User, Visibility } from "@/lib/types";
+import { patchMetadata } from "@/lib/api/resources";
+import { getErrorMessage } from "@/lib/utils";
+import { ResourceType, User, Visibility } from "@/lib/types";
 
 export default function UploadPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading upload wizard…</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-[var(--ink-soft)]">Loading…</div>}>
       <UploadPageContent />
     </Suspense>
   );
@@ -27,39 +30,102 @@ function UploadPageContent() {
   const { user, isLoading, error } = useRequireAuth();
   const searchParams = useSearchParams();
   const versionOfId = searchParams.get("versionOf");
+  const editId = searchParams.get("editId");
 
   if (isLoading) {
     return (
-      <section className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Upload Wizard</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Share a new resource</h1>
-        </div>
-        <Card className="h-80 animate-pulse border-slate-800/80 bg-slate-900/80 p-6" />
+      <section className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
+        <Card className="h-80 animate-pulse" />
       </section>
     );
   }
 
   if (error || !user) {
     return (
-      <section className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-        <Card className="border-slate-700/80 bg-slate-900/80 p-8 text-center">
-          <p className="text-slate-300">Please sign in to upload resources.</p>
+      <section className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
+        <Card className="p-8 text-center">
+          <p className="text-[var(--ink-soft)]">Please sign in to upload resources.</p>
         </Card>
       </section>
     );
   }
 
+  if (editId) {
+    return <EditMetadataForm resourceId={editId} />;
+  }
+
   return <UploadWizard user={user} versionOfId={versionOfId} />;
 }
+
+// ─── Edit Metadata Form ──────────────────────────────────────────────────────
+
+const editSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  tags: z.string().optional(),
+});
+
+type EditFormData = z.infer<typeof editSchema>;
+
+function EditMetadataForm({ resourceId }: { resourceId: string }) {
+  const router = useRouter();
+  const qc = useQueryClient();
+  const { register, handleSubmit, formState: { errors } } = useForm<EditFormData>({
+    resolver: zodResolver(editSchema),
+  });
+  const mutation = useMutation({
+    mutationFn: (data: EditFormData) =>
+      patchMetadata(resourceId, {
+        title: data.title.trim(),
+        description: data.description?.trim(),
+        tags: data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resources", resourceId] });
+      router.push(`/resources/${resourceId}`);
+    },
+  });
+
+  return (
+    <section className="mx-auto max-w-xl px-4 py-8">
+      <h1 className="mb-6 text-[22px] font-semibold text-[var(--ink)]">Edit Metadata</h1>
+      <Card className="p-6 space-y-4">
+        <label className="block space-y-1.5 text-[12px]">
+          <span className="font-medium text-[var(--ink)]">Title *</span>
+          <input className={inputCls} {...register("title")} placeholder="Resource title" />
+          {errors.title && <p className="text-[11px] text-[#d24545]">{errors.title.message}</p>}
+        </label>
+        <label className="block space-y-1.5 text-[12px]">
+          <span className="font-medium text-[var(--ink)]">Description</span>
+          <textarea className={`${inputCls} min-h-[80px]`} {...register("description")} placeholder="Optional description" />
+        </label>
+        <label className="block space-y-1.5 text-[12px]">
+          <span className="font-medium text-[var(--ink)]">Tags (comma separated)</span>
+          <input className={inputCls} {...register("tags")} placeholder="e.g. exam, semester" />
+        </label>
+        {mutation.isError && (
+          <p className="text-[12px] text-[#d24545]">{getErrorMessage(mutation.error, "Update failed.")}</p>
+        )}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" type="button" onClick={() => router.back()}>Cancel</Button>
+          <Button type="button" onClick={handleSubmit((d) => mutation.mutate(d))} disabled={mutation.isPending}>
+            {mutation.isPending ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+// ─── Upload Wizard ───────────────────────────────────────────────────────────
 
 const uploadSchema = z.object({
   resourceType: z.enum(["CLASS_NOTES", "LECTURE_NOTES", "SYLLABUS", "VIDEO", "PYQ", "BOOK_PDF"]),
   youtubeUrl: z.string().optional(),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  courseId: z.string().min(1, "Course ID is required"),
-  departmentId: z.string().min(1, "Department ID is required"),
+  courseId: z.string().min(1, "Course is required"),
+  departmentId: z.string().min(1, "Department is required"),
   sessionId: z.string().optional(),
   collegeId: z.string().optional(),
   visibility: z.enum(["COLLEGE", "PLATFORM"]),
@@ -77,21 +143,21 @@ const RESOURCE_TYPES: { value: ResourceType; label: string }[] = [
   { value: "BOOK_PDF", label: "Book PDF" },
 ];
 
+const inputCls =
+  "w-full rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-[12px] text-[var(--ink)] placeholder:text-[var(--ink-soft)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] disabled:opacity-50";
+
 function UploadWizard({ user, versionOfId }: { user: User; versionOfId: string | null }) {
   const router = useRouter();
   const mutation = useUploadResourceMutation();
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const isVersioning = Boolean(versionOfId);
+  // Versioning: skip to file step directly, then review
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(isVersioning ? 2 : 1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useForm<UploadFormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<UploadFormData>({
     resolver: zodResolver(uploadSchema),
     defaultValues: {
       resourceType: "CLASS_NOTES",
@@ -118,11 +184,8 @@ function UploadWizard({ user, versionOfId }: { user: User; versionOfId: string |
   const { data: courses } = useCoursesQuery(departmentId || undefined);
   const { data: sessions } = useSessionsQuery(departmentId || undefined);
 
-  // Step 3 Validation: PYQ missing session/year blocks Next button (Milestone 4 task 1 Step 3)
   const isPYQMissingSession = resourceType === "PYQ" && !sessionId?.trim();
   const canProceedFromStep3 = courseId?.trim() && departmentId?.trim() && !isPYQMissingSession;
-
-  // Step 2 Validation: Must have file or YouTube link
   const canProceedFromStep2 = selectedFile !== null || (youtubeUrl && youtubeUrl.trim().length > 0);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -132,19 +195,13 @@ function UploadWizard({ user, versionOfId }: { user: User; versionOfId: string |
     },
   });
 
-  const uploaderRoleSnapshot: UploaderRoleSnapshot =
-    user.role === "TEACHER" || user.role === "SUB_ADMIN" || user.role === "PLATFORM_ADMIN"
-      ? user.role
-      : "STUDENT";
-
   const onSubmit = async (data: UploadFormData) => {
     setDuplicateWarning(null);
+    setSubmitError(null);
     try {
       const res = await mutation.mutateAsync({
         file: selectedFile,
         youtubeUrl: data.youtubeUrl?.trim() || undefined,
-        uploaderId: user.id,
-        uploaderRoleSnapshot,
         resourceType: data.resourceType,
         title: data.title.trim(),
         description: data.description?.trim() || null,
@@ -154,53 +211,64 @@ function UploadWizard({ user, versionOfId }: { user: User; versionOfId: string |
         sessionId: data.sessionId?.trim() || undefined,
         visibility: data.visibility,
         collegeId: data.collegeId?.trim() || undefined,
+        versionOfId: versionOfId ?? null,
       });
 
-      // If backend returns a duplicate hash response, surface non-blocking warning banner
       if ((res as unknown as { duplicateHashWarning?: boolean })?.duplicateHashWarning) {
-        setDuplicateWarning("Warning: A file with identical content already exists for this course.");
+        setDuplicateWarning("A file with identical content already exists for this course.");
       } else {
         router.push("/my-uploads");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("duplicate") || msg.includes("hash")) {
-        setDuplicateWarning("Warning: Backend reported duplicate file hash. You may review or proceed.");
+      const msg = getErrorMessage(err, "Upload failed. Please try again.");
+      if (msg.toLowerCase().includes("duplicate") || msg.toLowerCase().includes("hash")) {
+        setDuplicateWarning("Duplicate file hash detected. You may still proceed.");
+      } else {
+        setSubmitError(msg);
       }
     }
   };
 
+  // Total visible steps: versioning = 2 (file + review), otherwise 5
+  const totalSteps = isVersioning ? 2 : 5;
+  const currentStepLabel = isVersioning
+    ? step === 2 ? "File" : "Review"
+    : ["Type", "File", "Classification", "Visibility", "Review"][step - 1];
+
   return (
     <section className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6">
-        <p className="text-sm uppercase tracking-[0.24em] text-slate-500">
-          {versionOfId ? "New Version Wizard" : "Upload Wizard"}
+        <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--ink-soft)]">
+          {isVersioning ? "New Version Wizard" : "Upload Wizard"}
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-white">
-          {versionOfId ? "Creating New Version" : "Share a Resource"}
+        <h1 className="mt-2 text-[26px] font-semibold text-[var(--ink)]">
+          {isVersioning ? "Add New Version" : "Share a Resource"}
         </h1>
 
-        {/* Step Progress Bar */}
-        <div className="mt-4 flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 border border-slate-800 text-xs">
-          {[1, 2, 3, 4, 5].map((s) => (
+        {isVersioning && (
+          <div className="mt-3 rounded-[8px] border border-[#c9973b]/40 bg-[#f6ecd8] px-4 py-2.5 text-[12px] text-[#c9973b]">
+            Adding a new version to resource: <span className="font-semibold">{versionOfId}</span>. Only the file upload step is required.
+          </div>
+        )}
+
+        {/* Step progress */}
+        <div className="mt-4 flex items-center gap-1.5 rounded-[8px] border border-[var(--line-soft)] bg-[var(--paper)] px-4 py-2.5">
+          {(isVersioning ? [2, 5] : [1, 2, 3, 4, 5]).map((s, idx) => (
             <div key={s} className="flex items-center gap-1.5">
+              {idx > 0 && <span className="text-[var(--line)] text-[10px]">›</span>}
               <span
-                className={`flex h-6 w-6 items-center justify-center rounded-full font-semibold ${
+                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold ${
                   step === s
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-[var(--ink)] text-white"
                     : step > s
-                    ? "bg-slate-700 text-slate-200"
-                    : "bg-slate-800 text-slate-500"
+                    ? "bg-[var(--ph-strong)] text-[var(--ink-soft)]"
+                    : "bg-[var(--ph)] text-[var(--ink-soft)]"
                 }`}
               >
-                {s}
+                {idx + 1}
               </span>
-              <span className={`hidden sm:inline font-medium ${step === s ? "text-white" : "text-slate-500"}`}>
-                {s === 1 && "Type"}
-                {s === 2 && "File"}
-                {s === 3 && "Classification"}
-                {s === 4 && "Visibility"}
-                {s === 5 && "Review"}
+              <span className={`hidden text-[11px] font-medium sm:inline ${step === s ? "text-[var(--ink)]" : "text-[var(--ink-soft)]"}`}>
+                {currentStepLabel}
               </span>
             </div>
           ))}
@@ -208,109 +276,101 @@ function UploadWizard({ user, versionOfId }: { user: User; versionOfId: string |
       </div>
 
       {duplicateWarning && (
-        <div className="mb-6 rounded-2xl border border-amber-700/60 bg-amber-900/20 p-4 text-sm text-amber-200">
-          <p className="font-semibold">{duplicateWarning}</p>
-          <p className="mt-1 text-xs text-amber-300/80">This is a non-blocking warning. You can still proceed or edit your file.</p>
+        <div className="mb-4 rounded-[8px] border border-[#c9973b]/40 bg-[#f6ecd8] px-4 py-2.5 text-[12px] text-[#c9973b]">
+          {duplicateWarning}
         </div>
       )}
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Card className="border-slate-700/80 bg-slate-900/80 p-6">
-          {/* STEP 1: Select Resource Type */}
-          {step === 1 && (
+        <Card className="p-6">
+          {/* STEP 1: Resource Type (skipped when versioning) */}
+          {step === 1 && !isVersioning && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-white">Step 1: Choose Resource Type</h2>
-              <p className="text-sm text-slate-400">Select the category that best describes your document or media.</p>
-
-              <div className="grid gap-3 sm:grid-cols-2 pt-2">
+              <h2 className="text-[16px] font-semibold text-[var(--ink)]">Choose Resource Type</h2>
+              <div className="grid gap-2 sm:grid-cols-2 pt-1">
                 {RESOURCE_TYPES.map((t) => (
                   <button
                     key={t.value}
                     type="button"
                     onClick={() => setValue("resourceType", t.value)}
-                    className={`rounded-2xl border p-4 text-left transition ${
+                    className={`rounded-[8px] border p-3 text-left text-[12px] transition ${
                       resourceType === t.value
-                        ? "border-indigo-500 bg-indigo-950/40 text-white"
-                        : "border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700"
+                        ? "border-[var(--ink)] bg-[var(--ph)] text-[var(--ink)]"
+                        : "border-[var(--line-soft)] text-[var(--ink-soft)] hover:bg-[var(--ph)]"
                     }`}
                   >
                     <p className="font-semibold">{t.label}</p>
                   </button>
                 ))}
               </div>
-
-              <div className="flex justify-end pt-4">
-                <Button type="button" onClick={() => setStep(2)}>Next: File / Link →</Button>
+              <div className="flex justify-end pt-2">
+                <Button type="button" onClick={() => setStep(2)}>Next: File →</Button>
               </div>
             </div>
           )}
 
-          {/* STEP 2: File Upload (react-dropzone) / YouTube Link */}
+          {/* STEP 2: File / YouTube */}
           {step === 2 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-white">Step 2: Upload File or Provide YouTube Link</h2>
-              <p className="text-sm text-slate-400">Drag and drop your file or enter a YouTube video URL.</p>
+              <h2 className="text-[16px] font-semibold text-[var(--ink)]">Upload File or YouTube Link</h2>
 
-              {/* Desktop Drag and Drop Zone */}
               <div
                 {...getRootProps()}
-                className={`cursor-pointer rounded-3xl border-2 border-dashed p-8 text-center transition ${
+                className={`cursor-pointer rounded-[8px] border-2 border-dashed p-8 text-center transition ${
                   isDragActive
-                    ? "border-indigo-500 bg-indigo-950/30"
-                    : "border-slate-700 bg-slate-950/60 hover:border-slate-600"
+                    ? "border-[var(--accent)] bg-[var(--ph)]"
+                    : "border-[var(--line)] hover:border-[var(--ink-soft)]"
                 }`}
               >
                 <input {...getInputProps()} />
-                <p className="text-2xl">📁</p>
-                <p className="mt-2 text-sm font-semibold text-white">
-                  {selectedFile ? `Selected: ${selectedFile.name}` : "Drag & drop a file here, or click to browse"}
+                <p className="text-[22px]">📁</p>
+                <p className="mt-2 text-[12px] font-semibold text-[var(--ink)]">
+                  {selectedFile ? `Selected: ${selectedFile.name}` : "Drag & drop, or click to browse"}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">PDF, DOCX, ZIP, MP4 up to 50MB</p>
+                <p className="mt-1 text-[11px] text-[var(--ink-soft)]">PDF, DOCX, ZIP, MP4 up to 50MB</p>
               </div>
 
-              <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-slate-800"></div>
-                <span className="flex-shrink mx-4 text-xs uppercase text-slate-500">OR</span>
-                <div className="flex-grow border-t border-slate-800"></div>
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-[var(--line-soft)]" />
+                <span className="text-[11px] uppercase text-[var(--ink-soft)]">or</span>
+                <div className="h-px flex-1 bg-[var(--line-soft)]" />
               </div>
 
-              <label className="block space-y-2 text-sm">
-                <span className="font-medium text-slate-200">YouTube Video Link</span>
-                <input
-                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500"
-                  {...register("youtubeUrl")}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                />
+              <label className="block space-y-1.5 text-[12px]">
+                <span className="font-medium text-[var(--ink)]">YouTube Video Link</span>
+                <input className={inputCls} {...register("youtubeUrl")} placeholder="https://www.youtube.com/watch?v=..." />
               </label>
 
-              <div className="flex justify-between pt-4">
-                <Button type="button" variant="secondary" onClick={() => setStep(1)}>← Back</Button>
-                <Button type="button" disabled={!canProceedFromStep2} onClick={() => setStep(3)}>Next: Classification →</Button>
+              <div className="flex justify-between pt-2">
+                {!isVersioning && <Button type="button" variant="ghost" onClick={() => setStep(1)}>← Back</Button>}
+                {isVersioning && <span />}
+                <Button
+                  type="button"
+                  disabled={!canProceedFromStep2}
+                  onClick={() => isVersioning ? setStep(5) : setStep(3)}
+                >
+                  {isVersioning ? "Review →" : "Next: Classification →"}
+                </Button>
               </div>
             </div>
           )}
 
-          {/* STEP 3: Classification */}
-          {step === 3 && (
+          {/* STEP 3: Classification (skipped when versioning) */}
+          {step === 3 && !isVersioning && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-white">Step 3: Classification & Details</h2>
-              <p className="text-sm text-slate-400">Provide course and department information to index your resource.</p>
+              <h2 className="text-[16px] font-semibold text-[var(--ink)]">Classification & Details</h2>
 
-              <label className="block space-y-2 text-sm">
-                <span className="font-medium text-slate-200">Title *</span>
-                <input
-                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500"
-                  {...register("title")}
-                  placeholder="e.g. CSE301 Midterm Past Question 2024"
-                />
-                {errors.title && <p className="text-xs text-rose-400">{errors.title.message}</p>}
+              <label className="block space-y-1.5 text-[12px]">
+                <span className="font-medium text-[var(--ink)]">Title *</span>
+                <input className={inputCls} {...register("title")} placeholder="e.g. CSE301 Midterm Past Questions 2024" />
+                {errors.title && <p className="text-[11px] text-[#d24545]">{errors.title.message}</p>}
               </label>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block space-y-2 text-sm">
-                  <span className="font-medium text-slate-200">Department *</span>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-1.5 text-[12px]">
+                  <span className="font-medium text-[var(--ink)]">Department *</span>
                   <select
-                    className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                    className={inputCls}
                     {...register("departmentId")}
                     onChange={(e) => {
                       setValue("departmentId", e.target.value);
@@ -320,118 +380,81 @@ function UploadWizard({ user, versionOfId }: { user: User; versionOfId: string |
                   >
                     <option value="">Select department…</option>
                     {(allDepartments ?? []).map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
+                      <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
                   </select>
                 </label>
 
-                <label className="block space-y-2 text-sm">
-                  <span className="font-medium text-slate-200">Course *</span>
-                  <select
-                    className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500 disabled:opacity-50"
-                    {...register("courseId")}
-                    disabled={!departmentId || !courses}
-                  >
-                    <option value="">
-                      {!departmentId ? "Select department first" : "Select course…"}
-                    </option>
+                <label className="block space-y-1.5 text-[12px]">
+                  <span className="font-medium text-[var(--ink)]">Course *</span>
+                  <select className={inputCls} {...register("courseId")} disabled={!departmentId || !courses}>
+                    <option value="">{!departmentId ? "Select department first" : "Select course…"}</option>
                     {(courses ?? []).map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </label>
               </div>
 
-              <label className="block space-y-2 text-sm">
-                <span className="font-medium text-slate-200">
-                  Session {resourceType === "PYQ" ? "*" : "(Optional)"}
-                </span>
+              <label className="block space-y-1.5 text-[12px]">
+                <span className="font-medium text-[var(--ink)]">Session {resourceType === "PYQ" ? "*" : "(Optional)"}</span>
                 <select
-                  className={`w-full rounded-2xl border bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500 disabled:opacity-50 ${
-                    isPYQMissingSession ? "border-rose-500" : "border-slate-700"
-                  }`}
+                  className={`${inputCls} ${isPYQMissingSession ? "border-[#d24545]" : ""}`}
                   {...register("sessionId")}
                   disabled={!departmentId || !sessions}
                 >
-                  <option value="">
-                    {!departmentId ? "Select department first" : "Select session…"}
-                  </option>
+                  <option value="">{!departmentId ? "Select department first" : "Select session…"}</option>
                   {(sessions ?? []).map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label}
-                    </option>
+                    <option key={s.id} value={s.id}>{s.label}</option>
                   ))}
                 </select>
                 {isPYQMissingSession && (
-                  <p className="text-xs font-semibold text-rose-400">
-                    Validation error: PYQ resources require a Session/Year. Next button is blocked.
-                  </p>
+                  <p className="text-[11px] text-[#d24545]">PYQ resources require a session.</p>
                 )}
               </label>
 
-              <label className="block space-y-2 text-sm">
-                <span className="font-medium text-slate-200">Description (Optional)</span>
-                <textarea
-                  className="min-h-[80px] w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-indigo-500"
-                  {...register("description")}
-                  placeholder="Additional context about this resource…"
-                />
+              <label className="block space-y-1.5 text-[12px]">
+                <span className="font-medium text-[var(--ink)]">Description (Optional)</span>
+                <textarea className={`${inputCls} min-h-[72px]`} {...register("description")} placeholder="Additional context…" />
               </label>
 
-              <div className="flex justify-between pt-4">
-                <Button type="button" variant="secondary" onClick={() => setStep(2)}>← Back</Button>
-                <Button type="button" disabled={!canProceedFromStep3 || !title?.trim()} onClick={() => setStep(4)}>Next: Visibility →</Button>
+              <div className="flex justify-between pt-2">
+                <Button type="button" variant="ghost" onClick={() => setStep(2)}>← Back</Button>
+                <Button type="button" disabled={!canProceedFromStep3 || !title?.trim()} onClick={() => setStep(4)}>
+                  Next: Visibility →
+                </Button>
               </div>
             </div>
           )}
 
-          {/* STEP 4: Visibility */}
-          {step === 4 && (
+          {/* STEP 4: Visibility (skipped when versioning) */}
+          {step === 4 && !isVersioning && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-white">Step 4: Visibility Settings</h2>
-              <p className="text-sm text-slate-400">Choose who can access this resource.</p>
+              <h2 className="text-[16px] font-semibold text-[var(--ink)]">Visibility Settings</h2>
 
-              <div className="space-y-3 pt-2">
-                <label className="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 cursor-pointer">
-                  <input
-                    type="radio"
-                    value="COLLEGE"
-                    {...register("visibility")}
-                    className="mt-1 accent-indigo-500"
-                  />
+              <div className="space-y-2 pt-1">
+                <label className="flex items-start gap-3 rounded-[8px] border border-[var(--line-soft)] p-3 cursor-pointer hover:bg-[var(--ph)]">
+                  <input type="radio" value="COLLEGE" {...register("visibility")} className="mt-0.5" />
                   <div>
-                    <p className="font-semibold text-white">College Only (Default)</p>
-                    <p className="text-xs text-slate-400">Accessible to verified students and faculty within your college.</p>
+                    <p className="text-[12px] font-semibold text-[var(--ink)]">College Only (Default)</p>
+                    <p className="text-[11px] text-[var(--ink-soft)]">Accessible to verified members within your college.</p>
                   </div>
                 </label>
 
-                {user.role === "TEACHER" || user.role === "SUB_ADMIN" || user.role === "PLATFORM_ADMIN" ? (
-                  <label className="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 cursor-pointer">
-                    <input
-                      type="radio"
-                      value="PLATFORM"
-                      {...register("visibility")}
-                      className="mt-1 accent-indigo-500"
-                    />
+                {(user.role === "TEACHER" || user.role === "SUB_ADMIN" || user.role === "PLATFORM_ADMIN") && (
+                  <label className="flex items-start gap-3 rounded-[8px] border border-[var(--line-soft)] p-3 cursor-pointer hover:bg-[var(--ph)]">
+                    <input type="radio" value="PLATFORM" {...register("visibility")} className="mt-0.5" />
                     <div>
-                      <p className="font-semibold text-white">Platform-wide</p>
-                      <p className="text-xs text-slate-400">Available across all colleges on NoteKoi (Teacher / Admin privilege).</p>
+                      <p className="text-[12px] font-semibold text-[var(--ink)]">Platform-wide</p>
+                      <p className="text-[11px] text-[var(--ink-soft)]">Available across all colleges on NoteKoi.</p>
                     </div>
                   </label>
-                ) : (
-                  <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800 text-xs text-slate-400">
-                    Student uploads default to College visibility. CRs and Sub Admins may recommend or promote resources platform-wide later.
-                  </div>
                 )}
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button type="button" variant="secondary" onClick={() => setStep(3)}>← Back</Button>
-                <Button type="button" onClick={() => setStep(5)}>Next: Review & Submit →</Button>
+              <div className="flex justify-between pt-2">
+                <Button type="button" variant="ghost" onClick={() => setStep(3)}>← Back</Button>
+                <Button type="button" onClick={() => setStep(5)}>Next: Review →</Button>
               </div>
             </div>
           )}
@@ -439,22 +462,39 @@ function UploadWizard({ user, versionOfId }: { user: User; versionOfId: string |
           {/* STEP 5: Review & Submit */}
           {step === 5 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-white">Step 5: Review & Submit</h2>
-              <p className="text-sm text-slate-400">Review your submission details before publishing.</p>
+              <h2 className="text-[16px] font-semibold text-[var(--ink)]">Review & Submit</h2>
 
-              <div className="rounded-2xl bg-slate-950 p-5 space-y-3 text-sm text-slate-300">
-                <div className="flex justify-between"><span className="text-slate-400">Title</span><span className="font-semibold text-white">{watch("title")}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Type</span><span className="font-semibold text-white">{watch("resourceType")}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Course / Dept</span><span className="font-semibold text-white">{watch("courseId")} / {watch("departmentId")}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Session</span><span className="font-semibold text-white">{watch("sessionId") || "N/A"}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">File / Link</span><span className="font-semibold text-white">{selectedFile ? selectedFile.name : watch("youtubeUrl") || "N/A"}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Visibility</span><span className="font-semibold text-white">{watch("visibility")}</span></div>
+              <div className="rounded-[8px] border border-[var(--line-soft)] divide-y divide-[var(--line-soft)]">
+                {!isVersioning && (
+                  <>
+                    <div className="flex justify-between px-4 py-2.5 text-[12px]">
+                      <span className="text-[var(--ink-soft)]">Title</span>
+                      <span className="font-semibold text-[var(--ink)]">{watch("title") || "—"}</span>
+                    </div>
+                    <div className="flex justify-between px-4 py-2.5 text-[12px]">
+                      <span className="text-[var(--ink-soft)]">Type</span>
+                      <span className="font-semibold text-[var(--ink)]">{watch("resourceType")}</span>
+                    </div>
+                    <div className="flex justify-between px-4 py-2.5 text-[12px]">
+                      <span className="text-[var(--ink-soft)]">Visibility</span>
+                      <span className="font-semibold text-[var(--ink)]">{watch("visibility")}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between px-4 py-2.5 text-[12px]">
+                  <span className="text-[var(--ink-soft)]">File / Link</span>
+                  <span className="font-semibold text-[var(--ink)]">{selectedFile ? selectedFile.name : watch("youtubeUrl") || "—"}</span>
+                </div>
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button type="button" variant="secondary" onClick={() => setStep(4)}>← Back</Button>
+              {submitError && (
+                <p className="rounded-[8px] bg-[#fbe6e6] px-4 py-2.5 text-[12px] text-[#d24545]">{submitError}</p>
+              )}
+
+              <div className="flex justify-between pt-2">
+                <Button type="button" variant="ghost" onClick={() => isVersioning ? setStep(2) : setStep(4)}>← Back</Button>
                 <Button type="submit" disabled={mutation.isPending}>
-                  {mutation.isPending ? "Submitting…" : "Submit Resource"}
+                  {mutation.isPending ? "Submitting…" : isVersioning ? "Submit New Version" : "Submit Resource"}
                 </Button>
               </div>
             </div>

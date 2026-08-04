@@ -1,34 +1,133 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: light;
+  /* Surface & text */
+  --ink: #1c1c1e;
+  --ink-soft: #55555a;
+  --line: #c7c7cc;
+  --line-soft: #e2e2e5;
+  --ph: #eceef0;
+  --ph-strong: #dcdee1;
+  --paper: #ffffff;
+  --canvas: #f4f4f6;
+  --accent: #2f2f33;
+  /* Badge colors — light */
+  --badge-pending-bg:  #f6ecd8; --badge-pending-fg:  #c9973b;
+  --badge-review-bg:   #e6ecfb; --badge-review-fg:   #3f6fd6;
+  --badge-approved-bg: #e3f4e8; --badge-approved-fg: #2f9e52;
+  --badge-rejected-bg: #fbe6e6; --badge-rejected-fg: #d24545;
+  --badge-super-bg:    #eceef0; --badge-super-fg:    #9a9a9e;
+  --badge-deletion-bg: #fbe9db; --badge-deletion-fg: #d3792a;
+  --badge-deleted-bg:  #eceef0; --badge-deleted-fg:  #9a9a9e;
+  --badge-platform-bg: #ece9fb; --badge-platform-fg: #7c6cd6;
+  --badge-college-bg:  #eceef0; --badge-college-fg:  #66666b;
+  --badge-role-bg:     #111111; --badge-role-fg:     #ffffff;
 }
+
+/* Dark token overrides — both system pref and manual toggle */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #f0f0f2;
+    --ink-soft: #a8a8b0;
+    --line: #3a3a3f;
+    --line-soft: #28282e;
+    --ph: #1c1c21;
+    --ph-strong: #242429;
+    --paper: #111114;
+    --canvas: #0a0a0d;
+    --accent: #e0e0e8;
+    --badge-pending-bg:  #3d2b0a; --badge-pending-fg:  #e8b56a;
+    --badge-review-bg:   #0d1f40; --badge-review-fg:   #6b9ff0;
+    --badge-approved-bg: #0a2a14; --badge-approved-fg: #5dc97a;
+    --badge-rejected-bg: #3d0a0a; --badge-rejected-fg: #f08080;
+    --badge-super-bg:    #1c1c21; --badge-super-fg:    #8a8a90;
+    --badge-deletion-bg: #3d1a06; --badge-deletion-fg: #e8924f;
+    --badge-deleted-bg:  #1c1c21; --badge-deleted-fg:  #6a6a70;
+    --badge-platform-bg: #1a1540; --badge-platform-fg: #a899f0;
+    --badge-college-bg:  #1c1c21; --badge-college-fg:  #8a8a90;
+    --badge-role-bg:     #e8e8f0; --badge-role-fg:     #1c1c1e;
+  }
+}
+
+[data-theme="dark"] {
+  --ink: #f0f0f2;
+  --ink-soft: #a8a8b0;
+  --line: #3a3a3f;
+  --line-soft: #28282e;
+  --ph: #1c1c21;
+  --ph-strong: #242429;
+  --paper: #111114;
+  --canvas: #0a0a0d;
+  --accent: #e0e0e8;
+  --badge-pending-bg:  #3d2b0a; --badge-pending-fg:  #e8b56a;
+  --badge-review-bg:   #0d1f40; --badge-review-fg:   #6b9ff0;
+  --badge-approved-bg: #0a2a14; --badge-approved-fg: #5dc97a;
+  --badge-rejected-bg: #3d0a0a; --badge-rejected-fg: #f08080;
+  --badge-super-bg:    #1c1c21; --badge-super-fg:    #8a8a90;
+  --badge-deletion-bg: #3d1a06; --badge-deletion-fg: #e8924f;
+  --badge-deleted-bg:  #1c1c21; --badge-deleted-fg:  #6a6a70;
+  --badge-platform-bg: #1a1540; --badge-platform-fg: #a899f0;
+  --badge-college-bg:  #1c1c21; --badge-college-fg:  #8a8a90;
+  --badge-role-bg:     #e8e8f0; --badge-role-fg:     #1c1c1e;
+}
+
+[data-theme="light"] {
+  --ink: #1c1c1e;
+  --ink-soft: #55555a;
+  --line: #c7c7cc;
+  --line-soft: #e2e2e5;
+  --ph: #eceef0;
+  --ph-strong: #dcdee1;
+  --paper: #ffffff;
+  --canvas: #f4f4f6;
+  --accent: #2f2f33;
+  --badge-pending-bg:  #f6ecd8; --badge-pending-fg:  #c9973b;
+  --badge-review-bg:   #e6ecfb; --badge-review-fg:   #3f6fd6;
+  --badge-approved-bg: #e3f4e8; --badge-approved-fg: #2f9e52;
+  --badge-rejected-bg: #fbe6e6; --badge-rejected-fg: #d24545;
+  --badge-super-bg:    #eceef0; --badge-super-fg:    #9a9a9e;
+  --badge-deletion-bg: #fbe9db; --badge-deletion-fg: #d3792a;
+  --badge-deleted-bg:  #eceef0; --badge-deleted-fg:  #9a9a9e;
+  --badge-platform-bg: #ece9fb; --badge-platform-fg: #7c6cd6;
+  --badge-college-bg:  #eceef0; --badge-college-fg:  #66666b;
+  --badge-role-bg:     #111111; --badge-role-fg:     #ffffff;
+}
+
+/* Badge CSS classes — respond to badge CSS variables set per theme */
+.badge-tone-pending   { background: var(--badge-pending-bg);  color: var(--badge-pending-fg); }
+.badge-tone-review    { background: var(--badge-review-bg);   color: var(--badge-review-fg); }
+.badge-tone-approved  { background: var(--badge-approved-bg); color: var(--badge-approved-fg); }
+.badge-tone-rejected  { background: var(--badge-rejected-bg); color: var(--badge-rejected-fg); }
+.badge-tone-super     { background: var(--badge-super-bg);    color: var(--badge-super-fg); }
+.badge-tone-deletion  { background: var(--badge-deletion-bg); color: var(--badge-deletion-fg); }
+.badge-tone-deleted   { background: var(--badge-deleted-bg);  color: var(--badge-deleted-fg); text-decoration: line-through; }
+.badge-tone-platform  { background: var(--badge-platform-bg); color: var(--badge-platform-fg); }
+.badge-tone-college   { background: var(--badge-college-bg);  color: var(--badge-college-fg); }
+.badge-tone-role      { background: var(--badge-role-bg);     color: var(--badge-role-fg); }
 
 html {
   scroll-behavior: smooth;
-}
-
-body {
-  min-height: 100vh;
-  margin: 0;
-  background: #0f172a;
-  color: #f8fafc;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 * {
   box-sizing: border-box;
 }
 
-button,
-input,
-textarea,
-select {
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: -apple-system, "Inter", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, textarea, select {
   font: inherit;
 }
 
 ::selection {
-  background: rgba(139, 92, 246, 0.3);
+  background: rgba(63, 111, 214, 0.2);
 }
 
 html {

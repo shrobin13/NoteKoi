@@ -1,25 +1,26 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useResourceVersionsQuery } from "@/hooks/useResourceVersionsQuery";
 import { useUsersQuery } from "@/hooks/useUsersQuery";
-import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyStateBlock } from "@/components/shared/empty-state-block";
 
 interface VersionsPageProps {
-  params: {
-    id: string;
-  };
+  params: { id: string };
 }
 
-/**
- * Version History Screen — Milestone 3 task 5 / wireframe B.11
- * Route: /resources/[id]/versions
- * Vertical timeline list. Current version anchored top.
- * Rejected versions dimmed/locked for unauthorized roles (Guest / Student).
- */
+const STATE_TONE: Record<string, string> = {
+  PENDING: "pending",
+  IN_REVIEW: "review",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  SUPERSEDED: "superseded",
+  DELETION_REQUESTED: "deletion",
+  DELETED: "deleted",
+};
+
 export default function ResourceVersionsPage({ params }: VersionsPageProps) {
   const { id } = params;
   const router = useRouter();
@@ -33,76 +34,69 @@ export default function ResourceVersionsPage({ params }: VersionsPageProps) {
     user?.role === "PLATFORM_ADMIN";
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+    <section className="mx-auto max-w-3xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Resource</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Version History</h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--ink-soft)]">Resource</p>
+          <h1 className="mt-1 text-[22px] font-semibold text-[var(--ink)]">Version History</h1>
+          <p className="mt-1 text-[12.5px] text-[var(--ink-soft)]">
             Timeline of all published and past revisions of this resource.
           </p>
         </div>
-        <Button variant="secondary" onClick={() => router.back()}>
-          ← Back to Resource
-        </Button>
+        <Button variant="secondary" onClick={() => router.back()}>← Back</Button>
       </div>
 
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-3xl bg-slate-900/80 border border-slate-800/80" />
+            <div key={i} className="h-20 animate-pulse rounded-[12px] border border-[var(--line-soft)] bg-[var(--ph)]" />
           ))}
         </div>
       ) : error || !versions?.length ? (
-        <Card className="border-slate-700/80 bg-slate-900/80 p-8">
-          <p className="text-center text-slate-300">
-            No version history found or available for this resource.
-          </p>
-        </Card>
+        <EmptyStateBlock
+          title="No version history"
+          description="No version history found or available for this resource."
+          actionText="Back to Discover"
+          actionHref="/"
+        />
       ) : (
-        <div className="relative border-l-2 border-slate-800 ml-4 pl-6 space-y-6">
+        <div className="relative ml-4 border-l-2 border-[var(--line-soft)] pl-6 space-y-5">
           {versions.map((ver, idx) => {
             const isLatest = idx === 0;
             const isRejected = ver.state === "REJECTED";
-            const isDimmed = isRejected && !isPrivileged && user?.id !== ver.uploader.id;
+            const isDimmed = isRejected && !isPrivileged && user?.id !== ver.uploader?.id;
 
             return (
-              <div key={ver.id} className="relative group">
-                {/* Timeline node icon */}
+              <div key={ver.id} className="relative">
+                {/* Timeline node */}
                 <div
-                  className={`absolute -left-[31px] top-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 bg-slate-950 text-xs font-bold ${
+                  className={`absolute -left-[31px] top-2 flex h-6 w-6 items-center justify-center rounded-full border-2 bg-[var(--paper)] text-[10px] font-bold ${
                     isLatest
-                      ? "border-indigo-500 text-indigo-400"
+                      ? "border-[var(--accent)] text-[var(--ink)]"
                       : isRejected
-                      ? "border-rose-500/60 text-rose-400"
-                      : "border-slate-700 text-slate-400"
+                      ? "border-[#d24545]/60 text-[#d24545]"
+                      : "border-[var(--line)] text-[var(--ink-soft)]"
                   }`}
                 >
                   v{ver.version}
                 </div>
 
-                <Card
-                  className={`border-slate-700/80 bg-slate-900/80 p-5 transition ${
-                    isDimmed ? "opacity-40 grayscale pointer-events-none" : "hover:border-slate-600"
+                <div
+                  className={`rounded-[12px] border border-[var(--line-soft)] bg-[var(--paper)] p-4 transition ${
+                    isDimmed ? "pointer-events-none opacity-40 grayscale" : "hover:border-[var(--ink-soft)]"
                   }`}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-white">{ver.title}</h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[13px] font-semibold text-[var(--ink)]">{ver.title}</span>
                         {isLatest && (
-                          <span className="rounded-full bg-indigo-900/60 border border-indigo-700/60 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.2em] text-indigo-300 font-semibold">
-                            Current Version
-                          </span>
+                          <Badge tone="review">Current</Badge>
                         )}
-                        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-slate-300">
-                          {ver.state.replace("_", " ")}
-                        </span>
+                        <Badge tone={STATE_TONE[ver.state] ?? "slate"}>{ver.state.replace(/_/g, " ")}</Badge>
                       </div>
-
-                      <p className="text-xs text-slate-400">
-                        Uploaded by {ver.uploader.name ?? ver.uploader.id} on{" "}
-                        {new Date(ver.createdAt).toLocaleDateString()}
+                      <p className="text-[11.5px] text-[var(--ink-soft)]">
+                        Uploaded by {ver.uploader?.name ?? ver.uploader?.email ?? "Unknown"} · {new Date(ver.createdAt).toLocaleDateString()}
                       </p>
                     </div>
 
@@ -113,7 +107,7 @@ export default function ResourceVersionsPage({ params }: VersionsPageProps) {
                             href={ver.fileUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-slate-700"
+                            className="rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-1 text-[11px] font-semibold text-[#3f6fd6] hover:bg-[var(--ph)] transition"
                           >
                             Download
                           </a>
@@ -123,7 +117,7 @@ export default function ResourceVersionsPage({ params }: VersionsPageProps) {
                             href={ver.youtubeUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-slate-700"
+                            className="rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-1 text-[11px] font-semibold text-[#d24545] hover:bg-[var(--ph)] transition"
                           >
                             Watch
                           </a>
@@ -133,11 +127,11 @@ export default function ResourceVersionsPage({ params }: VersionsPageProps) {
                   </div>
 
                   {isDimmed && (
-                    <p className="mt-2 text-xs italic text-rose-400/80">
+                    <p className="mt-2 text-[11.5px] italic text-[#d24545]/80">
                       Rejected version — details hidden for unauthorized roles.
                     </p>
                   )}
-                </Card>
+                </div>
               </div>
             );
           })}

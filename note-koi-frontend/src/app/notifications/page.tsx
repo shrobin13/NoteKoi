@@ -1,9 +1,10 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { EmptyStateBlock } from "@/components/shared/empty-state-block";
 import { useNotificationsQuery } from "@/hooks/useNotificationsQuery";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { markNotificationRead } from "@/lib/api/notifications";
 
 const NOTIFICATION_LABELS: Record<string, string> = {
   RESOURCE_APPROVED: "Resource Approved",
@@ -15,25 +16,52 @@ const NOTIFICATION_LABELS: Record<string, string> = {
   PROMOTED_RESOURCE_LATER_REJECTED: "Promoted Resource Rejected",
 };
 
+const TYPE_COLOR: Record<string, string> = {
+  RESOURCE_APPROVED: "#2f9e52",
+  RESOURCE_REJECTED: "#d24545",
+  PROMOTION_RECOMMENDATION_APPROVED: "#2f9e52",
+  PROMOTION_RECOMMENDATION_DENIED: "#d24545",
+  DELETION_APPROVED: "#d24545",
+  DELETION_DENIED: "#c9973b",
+  PROMOTED_RESOURCE_LATER_REJECTED: "#d24545",
+};
+
 export default function NotificationsPage() {
   const { isLoading: isLoadingUser } = useRequireAuth();
-  const { data: notifications, isLoading } = useNotificationsQuery(1, 20);
+  const { data: notifications, isLoading } = useNotificationsQuery(1, 50);
+  const qc = useQueryClient();
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) => markNotificationRead(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+
+  const unreadCount = (notifications ?? []).filter((n) => !n.isRead).length;
+
+  const header = (
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--ink-soft)]">Notifications</p>
+        <h1 className="mt-1 text-[22px] font-semibold text-[var(--ink)]">Your activity feed</h1>
+      </div>
+      {unreadCount > 0 && (
+        <span className="rounded-full bg-[#e3f4e8] px-3 py-1 text-[11px] font-semibold text-[#2f9e52]">
+          {unreadCount} unread
+        </span>
+      )}
+    </div>
+  );
 
   if (isLoadingUser || isLoading) {
     return (
-      <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Notifications</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Your activity feed</h1>
-          <p className="mt-2 max-w-2xl text-slate-300">Loading your latest notifications...</p>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="border-slate-700/80 bg-slate-900/80 p-6">
-            <p className="text-sm text-slate-400">Loading...</p>
-          </Card>
-          <Card className="border-slate-700/80 bg-slate-900/80 p-6">
-            <p className="text-sm text-slate-400">Please wait while we fetch your notifications.</p>
-          </Card>
+      <section className="mx-auto max-w-3xl space-y-6">
+        {header}
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-20 animate-pulse rounded-[12px] border border-[var(--line-soft)] bg-[var(--ph)]" />
+          ))}
         </div>
       </section>
     );
@@ -41,17 +69,11 @@ export default function NotificationsPage() {
 
   if (!notifications || notifications.length === 0) {
     return (
-      <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Notifications</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Your activity feed</h1>
-          <p className="mt-2 max-w-2xl text-slate-300">
-            You currently have no notifications. Once review and collaboration workflows are enabled, alerts will appear here.
-          </p>
-        </div>
+      <section className="mx-auto max-w-3xl space-y-6">
+        {header}
         <EmptyStateBlock
-          title="Stay tuned"
-          description="Important updates like verification status, resource approvals, and community alerts will live here."
+          title="No notifications yet"
+          description="Approvals, rejections, and collaboration updates will appear here."
           actionText="Browse Discover"
           actionHref="/"
         />
@@ -60,36 +82,57 @@ export default function NotificationsPage() {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Notifications</p>
-        <h1 className="mt-3 text-3xl font-semibold text-white">Your activity feed</h1>
-        <p className="mt-2 max-w-2xl text-slate-300">
-          Review your latest alerts, approvals, and community activity.
-        </p>
-      </div>
-      <div className="space-y-4">
-        {notifications.map((notification) => (
-          <Card key={notification.id} className="border-slate-700/80 bg-slate-900/80 p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-xs uppercase tracking-[0.18em] text-indigo-400">
-                  {NOTIFICATION_LABELS[notification.type] ?? notification.type}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-white">{notification.message}</p>
-                {notification.reason ? (
-                  <p className="mt-2 text-sm leading-6 text-slate-300">Reason: {notification.reason}</p>
-                ) : null}
+    <section className="mx-auto max-w-3xl space-y-6">
+      {header}
+      <div className="space-y-2.5">
+        {notifications.map((notification) => {
+          const color = TYPE_COLOR[notification.type] ?? "var(--ink-soft)";
+          return (
+            <div
+              key={notification.id}
+              className={`rounded-[12px] border bg-[var(--paper)] px-4 py-3.5 transition ${
+                notification.isRead
+                  ? "border-[var(--line-soft)]"
+                  : "border-[var(--accent)]/30 bg-[var(--ph)]"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-[10.5px] font-bold uppercase tracking-[0.18em]" style={{ color }}>
+                    {NOTIFICATION_LABELS[notification.type] ?? notification.type}
+                  </p>
+                  <p className="text-[13px] font-semibold text-[var(--ink)]">{notification.message}</p>
+                  {notification.reason ? (
+                    <p className="text-[12px] text-[var(--ink-soft)]">Reason: {notification.reason}</p>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                      notification.isRead
+                        ? "bg-[var(--ph)] text-[var(--ink-soft)]"
+                        : "bg-[#e3f4e8] text-[#2f9e52]"
+                    }`}
+                  >
+                    {notification.isRead ? "Read" : "New"}
+                  </span>
+                  {!notification.isRead && (
+                    <button
+                      onClick={() => markReadMutation.mutate(notification.id)}
+                      disabled={markReadMutation.isPending && markReadMutation.variables === notification.id}
+                      className="text-[10.5px] text-[var(--ink-soft)] underline hover:text-[var(--ink)] disabled:opacity-50"
+                    >
+                      Mark read
+                    </button>
+                  )}
+                </div>
               </div>
-              <span className={
-                `shrink-0 rounded-full px-3 py-1 text-[0.65rem] uppercase tracking-[0.18em] ${notification.isRead ? "bg-slate-800 text-slate-400" : "bg-emerald-500 text-slate-950"}`
-              }>
-                {notification.isRead ? "Read" : "New"}
-              </span>
+              <p className="mt-2.5 text-[10.5px] uppercase tracking-[0.18em] text-[var(--ink-soft)]">
+                {new Date(notification.createdAt).toLocaleString()}
+              </p>
             </div>
-            <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-500">{new Date(notification.createdAt).toLocaleString()}</p>
-          </Card>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

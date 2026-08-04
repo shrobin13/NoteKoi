@@ -48,8 +48,6 @@ export async function uploadResourceFile(file: File): Promise<UploadResourceFile
 }
 
 export interface CreateResourcePayload {
-  uploaderId: string;
-  uploaderRoleSnapshot: "STUDENT" | "TEACHER" | "SUB_ADMIN" | "PLATFORM_ADMIN";
   resourceType: Resource["type"];
   title: string;
   description?: string | null;
@@ -80,12 +78,13 @@ export async function getResourceById(id: string): Promise<Resource> {
 export interface ResourceVersion {
   id: string;
   version: number;
+  versionNumber?: number;
   title: string;
   state: Resource["state"];
   createdAt: string;
-  uploader: { id: string; name?: string; role: string };
-  fileUrl?: string;
-  youtubeUrl?: string;
+  uploader?: { id: string; name?: string | null; email?: string; role: string } | null;
+  fileUrl?: string | null;
+  youtubeUrl?: string | null;
 }
 
 export async function getResourceVersions(rootId: string): Promise<ResourceVersion[]> {

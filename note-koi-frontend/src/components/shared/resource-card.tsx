@@ -1,67 +1,88 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-
-import { ResourceState, ResourceType, User, Visibility } from "@/lib/types";
+import { ResourceState, ResourceType, ResourceUploader, Visibility } from "@/lib/types";
 
 interface ResourceCardProps {
   id: string;
   title: string;
-  description: string;
-  type: ResourceType;
+  description?: string | null;
+  type?: ResourceType | null;
+  resourceType?: ResourceType | null;
   visibility: Visibility;
-  uploader: Pick<User, "id" | "name" | "role">;
+  uploader?: ResourceUploader | null;
   createdAt: string;
   state: ResourceState;
+  showState?: boolean;
 }
 
-const stateToneMap: Record<ResourceCardProps["state"], string> = {
-  PENDING: "amber",
-  IN_REVIEW: "blue",
-  APPROVED: "green",
-  REJECTED: "red",
-  SUPERSEDED: "slate",
-  DELETION_REQUESTED: "orange",
-  DELETED: "slate"
+const stateTone: Record<ResourceState, string> = {
+  PENDING: "pending",
+  IN_REVIEW: "review",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  SUPERSEDED: "superseded",
+  DELETION_REQUESTED: "deletion",
+  DELETED: "deleted",
 };
 
-const visibilityToneMap: Record<Visibility, string> = {
-  PLATFORM: "violet",
-  COLLEGE: "slate"
+const stateLabel: Record<ResourceState, string> = {
+  PENDING: "Pending",
+  IN_REVIEW: "In Review",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  SUPERSEDED: "Superseded",
+  DELETION_REQUESTED: "Deletion Requested",
+  DELETED: "Deleted",
 };
 
-export function ResourceCard({ id, title, description, type, visibility, uploader, createdAt, state }: ResourceCardProps) {
+const typeLabel: Record<ResourceType, string> = {
+  CLASS_NOTES: "Class Notes",
+  LECTURE_NOTES: "Lecture Notes",
+  SYLLABUS: "Syllabus",
+  PYQ: "PYQ",
+  BOOK_PDF: "Book PDF",
+  VIDEO: "Video",
+};
+
+export function ResourceCard({
+  id,
+  title,
+  type,
+  resourceType,
+  visibility,
+  uploader,
+  createdAt,
+  state,
+  showState = false,
+}: ResourceCardProps) {
+  const resolvedType = type ?? resourceType;
+  const uploaderLabel = uploader?.name ?? uploader?.email ?? "Unknown";
+
   return (
-    <Card className="flex h-full flex-col justify-between gap-6 p-6">
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={stateToneMap[state]}>{state.replace("_", " ")}</Badge>
-          <Badge tone={visibilityToneMap[visibility]} variant="visibility">
-            {visibility === "PLATFORM" ? "Platform" : "College"}
-          </Badge>
-          <span className="rounded-full border border-slate-800/80 bg-slate-950/80 px-2 py-1 text-[11px] uppercase tracking-[0.24em] text-slate-300">
-            {type.replace("_", " ")}
-          </span>
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-xl font-semibold text-white">{title}</h3>
-          <p className="text-sm leading-6 text-slate-300">{description}</p>
-        </div>
+    <Link
+      href={`/resources/${id}`}
+      className="group block rounded-[12px] border border-[var(--line-soft)] bg-[var(--paper)] p-3 transition-shadow hover:shadow-md"
+    >
+      {/* Thumbnail placeholder */}
+      <div className="mb-2.5 h-[70px] w-full rounded-[8px] bg-[var(--ph)]" />
+
+      {/* Badges */}
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {showState && <Badge tone={stateTone[state]}>{stateLabel[state]}</Badge>}
+        <Badge tone={visibility === "PLATFORM" ? "platform" : "college"}>
+          {visibility === "PLATFORM" ? "Platform" : "College"}
+        </Badge>
       </div>
-      <div className="flex items-center justify-between gap-4 text-sm text-slate-400">
-        <div>
-          <p>Uploaded by</p>
-          <p className="text-slate-100">{uploader.name ?? uploader.id}</p>
-        </div>
-        <div>
-          <p>Created</p>
-          <p className="text-slate-100">{createdAt}</p>
-        </div>
+
+      {/* Title */}
+      <div className="text-[13px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)]">
+        {title}
       </div>
-      <Link href={`/resources/${id}`} className="inline-flex">
-        <Button variant="secondary">View details</Button>
-      </Link>
-    </Card>
+
+      {/* Meta */}
+      <div className="mt-1.5 text-[11px] text-[var(--ink-soft)]">
+        {(resolvedType ? (typeLabel[resolvedType] ?? resolvedType) : "Resource")} · {uploaderLabel}
+      </div>
+    </Link>
   );
 }

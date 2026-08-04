@@ -61,6 +61,17 @@ export function findSubAdminAssignmentById(id: string) {
   });
 }
 
+export function findAllActiveSubAdminAssignments() {
+  return prisma.subAdminAssignment.findMany({
+    where: { isActive: true },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      college: { select: { id: true, name: true } },
+    },
+    orderBy: { appointedAt: "desc" },
+  });
+}
+
 export function updateSubAdminAssignmentRevocation(id: string, revokedById: string) {
   return prisma.subAdminAssignment.update({
     where: { id },

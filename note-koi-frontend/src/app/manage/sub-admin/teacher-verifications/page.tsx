@@ -3,14 +3,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getTeacherVerifications, approveTeacherVerification } from "@/lib/api/admin";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { EmptyStateBlock } from "@/components/shared/empty-state-block";
 import Link from "next/link";
 
-/**
- * Teacher Verification Queue — Milestone 6 task 2 / wireframe B.19
- * wirefram-resolution.md §2 row: "Approve only. No reject." (no /reject endpoint exists for teacher verifications)
- */
 export default function TeacherVerificationsPage() {
   const qc = useQueryClient();
 
@@ -26,12 +21,12 @@ export default function TeacherVerificationsPage() {
   });
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+    <section className="mx-auto max-w-4xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Manage</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Teacher Verification Queue</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-400">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--ink-soft)]">Manage</p>
+          <h1 className="mt-1 text-[22px] font-semibold text-[var(--ink)]">Teacher Verification Queue</h1>
+          <p className="mt-1 text-[12.5px] text-[var(--ink-soft)]">
             Approve pending teacher registrations for your college. Approve-only — no decline action exists.
           </p>
         </div>
@@ -41,9 +36,9 @@ export default function TeacherVerificationsPage() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-2xl bg-slate-800/60" />
+            <div key={i} className="h-16 animate-pulse rounded-[12px] border border-[var(--line-soft)] bg-[var(--ph)]" />
           ))}
         </div>
       ) : error ? (
@@ -57,19 +52,19 @@ export default function TeacherVerificationsPage() {
           description="There are no teachers awaiting verification for your college."
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {teachers.map((teacher) => (
-            <Card
+            <div
               key={teacher.userId}
-              className="flex flex-col gap-4 border-slate-700/80 bg-slate-900/80 p-5 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-4 rounded-[12px] border border-[var(--line-soft)] bg-[var(--paper)] p-4 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="font-medium text-white">{teacher.name ?? "Unknown"}</p>
-                <p className="text-sm text-slate-400">
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="text-[13px] font-medium text-[var(--ink)]">{teacher.name ?? "Unknown"}</p>
+                <p className="text-[11.5px] text-[var(--ink-soft)]">
                   {teacher.college && <>{teacher.college} · </>}
                   {teacher.departments?.join(", ")}
                 </p>
-                {teacher.email && <p className="text-xs text-slate-500">{teacher.email}</p>}
+                {teacher.email && <p className="text-[11px] text-[var(--ink-soft)]">{teacher.email}</p>}
               </div>
               <Button
                 onClick={() => approveMutation.mutate(teacher.userId)}
@@ -77,7 +72,7 @@ export default function TeacherVerificationsPage() {
               >
                 Approve
               </Button>
-            </Card>
+            </div>
           ))}
         </div>
       )}

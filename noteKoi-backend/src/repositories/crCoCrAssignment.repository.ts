@@ -17,6 +17,10 @@ export function findActiveCrCoCrAssignmentsByCollege(collegeId: string) {
       collegeId,
       isActive: true,
     },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+    },
+    orderBy: { appointedAt: "desc" },
   });
 }
 

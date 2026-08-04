@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getResources } from "@/lib/api/resources";
 import { ResourceCard } from "@/components/shared/resource-card";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyStateBlock } from "@/components/shared/empty-state-block";
 
@@ -17,13 +16,6 @@ interface CourseBrowsePageProps {
   };
 }
 
-/**
- * Hierarchical Browse Screen — Milestone 3 task 2 / wireframe B.9
- * Route: /departments/[deptId]/sessions/[sessionId]/courses/[courseId]
- * Render breadcrumbs (Department → Session → Course).
- * List resources using ResourceCard grid.
- * "Include other colleges" toggle switch (modifies ?includeOtherColleges=true query param).
- */
 export default function CourseBrowsePage({ params }: CourseBrowsePageProps) {
   const { deptId, sessionId, courseId } = params;
   const [includeOtherColleges, setIncludeOtherColleges] = useState(false);
@@ -43,43 +35,43 @@ export default function CourseBrowsePage({ params }: CourseBrowsePageProps) {
   const resources = data?.items ?? [];
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* Breadcrumbs — Milestone 3 task 2 */}
-      <nav className="mb-4 flex items-center gap-2 text-xs font-medium text-slate-400">
-        <Link href="/" className="hover:text-slate-200">Home</Link>
+    <section className="mx-auto max-w-4xl space-y-6">
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--ink-soft)]">
+        <Link href="/" className="hover:text-[var(--ink)]">Home</Link>
         <span>/</span>
-        <span className="text-slate-300">Dept {deptId}</span>
+        <span>Dept {deptId}</span>
         <span>/</span>
-        <span className="text-slate-300">Session {sessionId}</span>
+        <span>Session {sessionId}</span>
         <span>/</span>
-        <span className="text-white font-semibold">{courseId}</span>
+        <span className="font-semibold text-[var(--ink)]">{courseId}</span>
       </nav>
 
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Hierarchical Browse</p>
-          <h1 className="mt-2 text-3xl font-semibold text-white">Course Resources</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Browse published notes, PYQs, and lecture slides for this course.
-          </p>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--ink-soft)]">Browse</p>
+          <h1 className="mt-1 text-[22px] font-semibold text-[var(--ink)]">Course Resources</h1>
+          <p className="mt-1 text-[12.5px] text-[var(--ink-soft)]">Browse published notes, PYQs, and lecture slides for this course.</p>
         </div>
 
-        {/* "Include other colleges" toggle switch — Milestone 3 task 2 */}
-        <label className="flex items-center gap-3 rounded-2xl border border-slate-700 bg-slate-900/90 px-4 py-2.5 cursor-pointer shadow-md">
-          <span className="text-sm font-medium text-slate-200">Include other colleges</span>
-          <input
-            type="checkbox"
-            checked={includeOtherColleges}
-            onChange={(e) => setIncludeOtherColleges(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
-          />
-        </label>
+        <button
+          type="button"
+          onClick={() => setIncludeOtherColleges((prev) => !prev)}
+          className={`flex items-center gap-2 rounded-[20px] border px-3 py-1.5 text-[11px] font-medium transition ${
+            includeOtherColleges
+              ? "border-[#3f6fd6] bg-[#e6ecfb] text-[#3f6fd6]"
+              : "border-[var(--line)] text-[var(--ink-soft)] hover:border-[var(--ink-soft)]"
+          }`}
+        >
+          <span className={`h-3 w-3 rounded-full border transition ${includeOtherColleges ? "border-[#3f6fd6] bg-[#3f6fd6]" : "border-[var(--line)]"}`} />
+          Include other colleges
+        </button>
       </div>
 
       {isLoading ? (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-3 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-64 animate-pulse rounded-3xl border border-slate-800/80 bg-slate-900/80" />
+            <div key={i} className="h-36 animate-pulse rounded-[12px] border border-[var(--line-soft)] bg-[var(--ph)]" />
           ))}
         </div>
       ) : error ? (
@@ -96,12 +88,16 @@ export default function CourseBrowsePage({ params }: CourseBrowsePageProps) {
           actionHref="/upload"
         />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-3 lg:grid-cols-3">
           {resources.map((resource) => (
             <ResourceCard key={resource.id} {...resource} />
           ))}
         </div>
       )}
+
+      <Link href="/">
+        <Button variant="ghost">← Back to Discover</Button>
+      </Link>
     </section>
   );
 }

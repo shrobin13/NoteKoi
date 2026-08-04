@@ -17,6 +17,7 @@ export async function findResourcesByUploader(uploaderId: string, skip = 0, take
     skip,
     take,
     include: {
+      uploader: { select: { id: true, email: true, name: true, role: true } },
       deletionRequests: { orderBy: { requestedAt: 'desc' }, take: 1 },
       promotionRecommendations: { orderBy: { recommendedAt: 'desc' }, take: 1 },
       promotionEvents: { orderBy: { createdAt: 'desc' }, take: 1 },
@@ -32,7 +33,7 @@ export function findResourceById(id: string) {
   return prisma.resource.findUnique({
     where: { id },
     include: {
-      uploader: { select: { id: true, email: true, role: true, collegeId: true, departmentId: true, sessionId: true } },
+      uploader: { select: { id: true, email: true, name: true, role: true, collegeId: true, departmentId: true, sessionId: true } },
       deletionRequests: { orderBy: { requestedAt: 'desc' }, take: 1 },
       promotionRecommendations: { orderBy: { recommendedAt: 'desc' }, take: 1 },
       promotionEvents: { orderBy: { createdAt: 'desc' }, take: 1 },
@@ -48,6 +49,7 @@ export async function findResourcesByFilters(where: Record<string, unknown>, ski
     take,
     include: {
       college: { select: { id: true, name: true } },
+      uploader: { select: { id: true, email: true, name: true, role: true } },
       deletionRequests: { orderBy: { requestedAt: 'desc' }, take: 1 },
     },
   });

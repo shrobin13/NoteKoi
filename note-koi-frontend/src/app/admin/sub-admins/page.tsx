@@ -1,20 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { appointSubAdmin, revokeSubAdmin } from "@/lib/api/admin";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { appointSubAdmin, revokeSubAdmin, listSubAdmins } from "@/lib/api/admin";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
-import { UpcomingFeatureCard } from "@/components/shared/upcoming-feature-card";
+import { EmptyStateBlock } from "@/components/shared/empty-state-block";
 
-/**
- * Sub Admin Management — Milestone 7 task 2 / wireframe B.24
- * Appoint/Revoke actions use confirmed endpoints from wirefram-resolution.md §4 B.24.
- * List endpoint (GET /platform-admin/sub-admins) not explicitly enumerated per §3 →
- * UpcomingFeatureCard until backend confirms the route.
- * Saved Views → UpcomingFeatureCard per §1 OQ#10.
- */
+const inputCls =
+  "w-full rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-[12px] text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]";
+
 export default function AdminSubAdminsPage() {
   const qc = useQueryClient();
   const [showAppoint, setShowAppoint] = useState(false);
@@ -23,43 +18,79 @@ export default function AdminSubAdminsPage() {
   const [collegeId, setCollegeId] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
+  const qKey = ["sub-admins"];
+
+  const { data: subAdmins, isLoading } = useQuery({
+    queryKey: qKey,
+    queryFn: listSubAdmins,
+    staleTime: 1000 * 60 * 2,
+  });
+
   const appointMutation = useMutation({
     mutationFn: () => appointSubAdmin({ userId, collegeId }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sub-admins"] }); setShowAppoint(false); setUserId(""); setCollegeId(""); setFormError(null); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qKey });
+      setShowAppoint(false);
+      setUserId(""); setCollegeId(""); setFormError(null);
+    },
     onError: (err: Error) => setFormError(err.message),
   });
 
   const revokeMutation = useMutation({
     mutationFn: (id: string) => revokeSubAdmin(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sub-admins"] }); setRevokeTarget(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: qKey }); setRevokeTarget(null); },
   });
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+    <section className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Administration</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Sub Admin Management</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-400">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--ink-soft)]">Administration</p>
+          <h1 className="mt-1 text-[22px] font-semibold text-[var(--ink)]">Sub Admin Management</h1>
+          <p className="mt-1 text-[12.5px] text-[var(--ink-soft)]">
             Appoint and revoke Sub Admin roles for colleges on the platform.
           </p>
         </div>
         <Button onClick={() => setShowAppoint(true)}>+ Appoint Sub Admin</Button>
       </div>
 
-      {/* Sub Admin list — UpcomingFeatureCard per wirefram-resolution.md §3 (GET list not enumerated) */}
-      <UpcomingFeatureCard
-        title="Sub Admin list isn't available yet"
-        description="The backend GET /platform-admin/sub-admins list endpoint hasn't been explicitly defined. Active sub admins will appear here once the backend team confirms the list route."
-      />
-
-      {/* Saved Views — UpcomingFeatureCard per §1 OQ#10 */}
-      <div className="mt-6">
-        <UpcomingFeatureCard
-          title="Saved Views aren't available yet"
-          description="Custom filter and column preference persistence requires a backend endpoint that doesn't exist yet."
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-14 animate-pulse rounded-[12px] border border-[var(--line-soft)] bg-[var(--ph)]" />
+          ))}
+        </div>
+      ) : !subAdmins?.length ? (
+        <EmptyStateBlock
+          title="No active sub admins"
+          description="Appoint a user as Sub Admin to give them college-level moderation authority."
         />
-      </div>
+      ) : (
+        <div className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--paper)] overflow-hidden">
+          <div className="divide-y divide-[var(--line-soft)]">
+            {subAdmins.map((sa) => (
+              <div key={sa.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                <div className="min-w-0 space-y-0.5">
+                  <p className="truncate text-[13px] font-medium text-[var(--ink)]">
+                    {sa.name ?? sa.email ?? sa.userId}
+                  </p>
+                  <p className="text-[11px] text-[var(--ink-soft)]">
+                    {sa.email && <span>{sa.email} · </span>}
+                    College: {sa.collegeName ?? sa.collegeId}
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  className="shrink-0 text-[11px] py-1 px-3"
+                  onClick={() => setRevokeTarget(sa.id)}
+                >
+                  Revoke
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Appoint Dialog */}
       <Dialog
@@ -68,29 +99,24 @@ export default function AdminSubAdminsPage() {
         description="Enter the user's ID and the college they will manage."
         onClose={() => { setShowAppoint(false); setFormError(null); }}
       >
-        <div className="mt-4 space-y-4">
-          <label className="block space-y-2 text-sm">
-            <span className="font-medium text-slate-200">User ID</span>
-            <input
-              className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-indigo-500"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="User ID to appoint"
-            />
+        <div className="mt-4 space-y-3">
+          <label className="block space-y-1.5 text-[12px]">
+            <span className="font-medium text-[var(--ink)]">User ID</span>
+            <input className={inputCls} value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="User ID to appoint" />
           </label>
-          <label className="block space-y-2 text-sm">
-            <span className="font-medium text-slate-200">College ID</span>
-            <input
-              className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-indigo-500"
-              value={collegeId}
-              onChange={(e) => setCollegeId(e.target.value)}
-              placeholder="College ID to manage"
-            />
+          <label className="block space-y-1.5 text-[12px]">
+            <span className="font-medium text-[var(--ink)]">College ID</span>
+            <input className={inputCls} value={collegeId} onChange={(e) => setCollegeId(e.target.value)} placeholder="College ID to manage" />
           </label>
-          {formError && <p className="rounded-2xl border border-rose-500 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{formError}</p>}
-          <div className="flex justify-end gap-3">
+          {formError && (
+            <p className="rounded-[8px] bg-[#fbe6e6] px-3 py-2 text-[12px] text-[#d24545]">{formError}</p>
+          )}
+          <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => { setShowAppoint(false); setFormError(null); }}>Cancel</Button>
-            <Button onClick={() => appointMutation.mutate()} disabled={!userId || !collegeId || appointMutation.isPending}>
+            <Button
+              onClick={() => appointMutation.mutate()}
+              disabled={!userId || !collegeId || appointMutation.isPending}
+            >
               {appointMutation.isPending ? "Appointing…" : "Appoint"}
             </Button>
           </div>
@@ -101,12 +127,16 @@ export default function AdminSubAdminsPage() {
       <Dialog
         open={!!revokeTarget}
         title="Revoke Sub Admin"
-        description="This will remove the Sub Admin role for this user."
+        description="This will remove the Sub Admin role for this user and downgrade them to a regular student."
         onClose={() => setRevokeTarget(null)}
       >
-        <div className="mt-4 flex justify-end gap-3">
+        <div className="mt-4 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setRevokeTarget(null)}>Cancel</Button>
-          <Button variant="destructive" onClick={() => { if (revokeTarget) revokeMutation.mutate(revokeTarget); }} disabled={revokeMutation.isPending}>
+          <Button
+            variant="destructive"
+            onClick={() => { if (revokeTarget) revokeMutation.mutate(revokeTarget); }}
+            disabled={revokeMutation.isPending}
+          >
             {revokeMutation.isPending ? "Revoking…" : "Confirm Revoke"}
           </Button>
         </div>

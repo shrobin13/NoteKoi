@@ -8,6 +8,7 @@ import { CommandPalette } from "@/components/shared/command-palette";
 import { BottomNav } from "@/components/shared/bottom-nav";
 import { Sidebar } from "@/components/shared/sidebar";
 import { TopBar } from "@/components/shared/top-bar";
+import { Footer } from "@/components/shared/footer";
 import { FloatingActionButton } from "@/components/shared/floating-action-button";
 import { Dialog } from "@/components/ui/dialog";
 
@@ -21,7 +22,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     "/upload",
     "/my-uploads",
     "/verification-pending",
-    "/profile/edit"
+    "/profile/edit",
   ].includes(pathname || "");
 
   const sidebarItems = useMemo(
@@ -29,31 +30,44 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       { href: "/", label: "Discover" },
       { href: "/search", label: "Search" },
       { href: "/notifications", label: "Notifications" },
-      { href: "/profile", label: "Profile" }
+      { href: "/profile", label: "Profile" },
     ],
     []
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="hidden border-r border-slate-800/70 bg-slate-950/95 lg:block">
-          <Sidebar role={role} />
+    <div className="min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
+      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)]">
+        {/* Desktop sidebar */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-0 h-screen overflow-y-auto">
+            <Sidebar role={role} />
+          </div>
         </aside>
+
+        {/* Main content column */}
         <div className="flex min-h-screen flex-col">
           <TopBar onOpenMobileNav={() => setMobileNavOpen(true)} />
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-            {children}
-          </main>
-          <footer className="block lg:hidden">
-            <BottomNav role={role} />
-          </footer>
-          {showUploadFab && role !== "GUEST" ? <FloatingActionButton href="/upload" /> : null}
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+          <Footer />
+          {/* Spacer so footer isn't hidden behind mobile bottom nav */}
+          <div className="block pb-16 lg:hidden" />
         </div>
       </div>
 
+      {/* Mobile bottom nav */}
+      <div className="lg:hidden">
+        <BottomNav role={role} />
+      </div>
+
+      {/* FAB */}
+      {showUploadFab && role !== "GUEST" ? <FloatingActionButton href="/upload" /> : null}
+
+      {/* Mobile nav dialog */}
       <Dialog open={mobileNavOpen} title="Navigation" onClose={() => setMobileNavOpen(false)}>
-        <Sidebar role={role} />
+        <div className="-mx-6 -mb-6 -mt-2">
+          <Sidebar role={role} />
+        </div>
       </Dialog>
 
       {commandPaletteOpen ? <CommandPalette items={sidebarItems} /> : null}

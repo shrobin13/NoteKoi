@@ -6,11 +6,12 @@ import type { Resource } from "@/lib/types";
 export interface QueueItem {
   id: string;
   title: string;
-  type: string;
+  type?: string;
+  resourceType?: string;
   state: string;
   deletionFlag: boolean;
   createdAt: string;
-  uploader: { id: string; name?: string };
+  uploader?: { id: string; name?: string | null; email?: string };
 }
 
 export interface CRQueueResponse {
@@ -19,16 +20,39 @@ export interface CRQueueResponse {
   scope?: { department: string; session: string };
 }
 
+export interface PromotionRecommendation {
+  id: string;
+  status: "PENDING" | "APPROVED" | "DENIED";
+  recommendedAt: string;
+  resource: QueueItem & { visibility: string };
+  recommendedBy: { id: string; email?: string };
+}
+
+export interface SubAdminQueueResponse {
+  pendingTeacherUploads: QueueItem[];
+  pendingPlatformResources: QueueItem[];
+  escalations: QueueItem[];
+  promotionRecommendations: PromotionRecommendation[];
+}
+
 /** GET /cr/queue — CR/Co-CR moderation queue (wirefram-resolution §4 B.16) */
 export async function getCRQueue(page = 1): Promise<CRQueueResponse> {
   return request<CRQueueResponse>(`/api/v1/cr/queue?page=${page}`);
 }
 
 /** GET /sub-admin/queue — Sub Admin moderation queue (wirefram-resolution §4 B.18) */
-export async function getSubAdminQueue(page = 1, tab?: string): Promise<CRQueueResponse> {
-  const qs = new URLSearchParams({ page: String(page) });
-  if (tab) qs.set("tab", tab);
-  return request<CRQueueResponse>(`/api/v1/sub-admin/queue?${qs.toString()}`);
+export async function getSubAdminQueue(): Promise<SubAdminQueueResponse> {
+  return request<SubAdminQueueResponse>(`/api/v1/sub-admin/queue`);
+}
+
+/** POST /promotion-recommendations/:id/approve */
+export async function approveRecommendation(id: string): Promise<void> {
+  await request<void>(`/api/v1/promotion-recommendations/${id}/approve`, { method: "POST" });
+}
+
+/** POST /promotion-recommendations/:id/deny */
+export async function denyRecommendation(id: string): Promise<void> {
+  await request<void>(`/api/v1/promotion-recommendations/${id}/deny`, { method: "POST" });
 }
 
 // ─── Student Verifications (Milestone 5 / §4 B.17) ───
@@ -78,6 +102,23 @@ export async function approveTeacherVerification(userId: string): Promise<void> 
   await request<void>(`/api/v1/sub-admin/teacher-verifications/${userId}/approve`, { method: "POST" });
 }
 
+// ─── Sub Admin list (Milestone 7) ───
+
+export interface SubAdminListEntry {
+  id: string;
+  userId: string;
+  name?: string | null;
+  email?: string | null;
+  collegeId: string;
+  collegeName?: string | null;
+  appointedAt: string;
+}
+
+/** GET /platform-admin/sub-admins */
+export async function listSubAdmins(): Promise<SubAdminListEntry[]> {
+  return request<SubAdminListEntry[]>("/api/v1/platform-admin/sub-admins");
+}
+
 // ─── CR/Co-CR Assignments (Milestone 6 / §4 B.21) ───
 
 export interface CRAssignment {
@@ -85,9 +126,18 @@ export interface CRAssignment {
   userId: string;
   name?: string;
   role: "CR" | "CO_CR";
+  type?: "CR" | "CO_CR";
   departmentId: string;
   sessionId: string;
+  collegeId?: string;
+  isActive?: boolean;
+  appointedAt?: string;
   assignedAt: string;
+}
+
+/** GET /sub-admin/cr-assignments */
+export async function listCRAssignments(): Promise<CRAssignment[]> {
+  return request<CRAssignment[]>("/api/v1/sub-admin/cr-assignments");
 }
 
 /** POST /sub-admin/cr-assignments */

@@ -11,7 +11,7 @@ export const createResourceSchema = z.object({
   sessionId: z.string().min(1).optional(),
   visibility: z.enum(["COLLEGE", "PLATFORM"]).optional().default("COLLEGE"),
   collegeId: z.string().min(1).optional(),
-  fileUrl: z.string().url().optional(),
+  fileUrl: z.string().min(1).optional(),  // relative path from multer disk storage
   youtubeUrl: z.string().url().optional(),
   contentHash: z.string().min(1).optional(),
 });
@@ -63,7 +63,7 @@ export const resourceVersionSchema = z.object({
   title: z.string().trim().min(1).optional(),
   description: z.string().trim().max(1000).optional().nullable(),
   tags: z.array(z.string().trim().min(1)).optional(),
-  fileUrl: z.string().url().optional(),
+  fileUrl: z.string().min(1).optional(),  // relative path from multer disk storage
   youtubeUrl: z.string().url().optional(),
   sessionId: z.string().min(1).optional(),
 });

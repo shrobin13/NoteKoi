@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,7 +12,7 @@ import { getErrorMessage } from "@/lib/utils";
 import { login } from "@/lib/api/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
+import { AuthFormLayout } from "@/components/shared/auth-form-layout";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Invalid email address"),
@@ -19,6 +20,17 @@ const loginSchema = z.object({
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
+
+function ServerErrorBanner() {
+  const params = useSearchParams();
+  const error = params.get("error");
+  if (!error) return null;
+  const msg =
+    error === "missing"
+      ? "Email and password are required."
+      : "Invalid email or password.";
+  return <p className="text-[12px] text-[#d24545]">{msg}</p>;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -51,56 +63,65 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-md">
-        <Card className="space-y-6 p-8">
-          <div>
-            <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Welcome back</p>
-            <h1 className="mt-3 text-3xl font-semibold text-white">Sign in to NoteKoi</h1>
-          </div>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-200">Email</label>
-              <Input
-                type="email"
-                {...register("email")}
-                placeholder="you@example.com"
-              />
-              {errors.email && <p className="text-xs text-rose-400">{errors.email.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-200">Password</label>
-              <Input
-                type="password"
-                {...register("password")}
-                placeholder="Enter your password"
-              />
-              {errors.password && <p className="text-xs text-rose-400">{errors.password.message}</p>}
-            </div>
-            {formError ? <p className="text-sm text-rose-400">{formError}</p> : null}
-            <Button type="button" onClick={handleSubmit(onSubmit)} className="w-full" disabled={mutation.isPending}>
-              {mutation.isPending ? "Signing in..." : "Sign In"}
-            </Button>
-          </form>
-          <div className="space-y-3 text-sm text-slate-300">
-            <p>
-              <Link href="/forgot-password" className="text-indigo-400 hover:text-indigo-300">
-                Forgot password?
-              </Link>
-            </p>
-            <p>
-              New to NoteKoi?{" "}
-              <Link href="/register/student" className="text-indigo-400 hover:text-indigo-300">
-                Register as a student
-              </Link>{" "}
-              or{" "}
-              <Link href="/register/teacher" className="text-indigo-400 hover:text-indigo-300">
-                register as a teacher
-              </Link>.
-            </p>
-          </div>
-        </Card>
+    <AuthFormLayout title="Sign in to NoteKoi" description="Welcome back" showSignIn={false}>
+      {/* Native form fallback for when JS is blocked */}
+      <form
+        action="/api/login"
+        method="post"
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-4"
+      >
+        <div className="space-y-1.5">
+          <label className="text-[12px] font-medium text-[var(--ink)]">Email</label>
+          <Input
+            type="email"
+            {...register("email")}
+            placeholder="you@example.com"
+          />
+          {errors.email && (
+            <p className="text-[11px] text-[#d24545]">{errors.email.message}</p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[12px] font-medium text-[var(--ink)]">Password</label>
+          <Input
+            type="password"
+            {...register("password")}
+            placeholder="Enter your password"
+          />
+          {errors.password && (
+            <p className="text-[11px] text-[#d24545]">{errors.password.message}</p>
+          )}
+        </div>
+
+        {formError ? <p className="text-[12px] text-[#d24545]">{formError}</p> : null}
+        <Suspense fallback={null}>
+          <ServerErrorBanner />
+        </Suspense>
+
+        <Button type="submit" className="w-full" disabled={mutation.isPending}>
+          {mutation.isPending ? "Signing in…" : "Sign In"}
+        </Button>
+      </form>
+
+      <div className="space-y-2 text-[12.5px] text-[var(--ink-soft)]">
+        <p>
+          <Link href="/forgot-password" className="text-[#3f6fd6] hover:underline">
+            Forgot password?
+          </Link>
+        </p>
+        <p>
+          New to NoteKoi?{" "}
+          <Link href="/register/student" className="text-[#3f6fd6] hover:underline">
+            Register as a student
+          </Link>{" "}
+          or{" "}
+          <Link href="/register/teacher" className="text-[#3f6fd6] hover:underline">
+            register as a teacher
+          </Link>
+          .
+        </p>
       </div>
-    </main>
+    </AuthFormLayout>
   );
 }

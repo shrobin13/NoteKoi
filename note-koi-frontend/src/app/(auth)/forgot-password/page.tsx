@@ -17,26 +17,24 @@ export default function ForgotPasswordPage() {
   const mutation = useMutation({
     mutationFn: forgotPassword,
     onSuccess: () => setSuccess(true),
-    onError: (error) => setFormError(getErrorMessage(error, "Unable to send reset link."))
+    onError: (error) => setFormError(getErrorMessage(error, "Unable to send reset link.")),
   });
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError(null);
-
     if (!email.trim()) {
       setFormError("Enter your email address.");
       return;
     }
-
     mutation.mutate({ email: email.trim() });
   };
 
   return (
     <AuthFormLayout title="Forgot password" description="Reset your NoteKoi password.">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-200">Email</label>
+        <div className="space-y-1.5">
+          <label className="text-[12px] font-medium text-[var(--ink)]">Email</label>
           <Input
             type="email"
             value={email}
@@ -44,18 +42,19 @@ export default function ForgotPasswordPage() {
             placeholder="you@example.com"
           />
         </div>
-        {formError ? <p className="text-sm text-rose-400">{formError}</p> : null}
+        {formError ? <p className="text-[12px] text-[#d24545]">{formError}</p> : null}
         {success ? (
-          <p className="text-sm text-emerald-400">
+          <p className="text-[12px] text-[#2f9e52]">
             Reset link sent. Check your email for instructions.
           </p>
         ) : null}
         <Button type="submit" className="w-full" disabled={mutation.isPending || success}>
-          {mutation.isPending ? "Sending..." : "Send reset link"}
+          {mutation.isPending ? "Sending…" : "Send reset link"}
         </Button>
       </form>
-      <p className="text-sm text-slate-300">
-        Remembered your password? <Link href="/login" className="text-indigo-400 hover:text-indigo-300">Sign in</Link> instead.
+      <p className="text-[12.5px] text-[var(--ink-soft)]">
+        Remembered your password?{" "}
+        <Link href="/login" className="text-[#3f6fd6] hover:underline">Sign in</Link> instead.
       </p>
     </AuthFormLayout>
   );

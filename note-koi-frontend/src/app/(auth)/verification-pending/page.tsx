@@ -5,26 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUsersQuery } from "@/hooks/useUsersQuery";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-/**
- * Verification Pending Screen — Milestone 2 task 5
- * - TanStack Query polling (refetchInterval: 30000) on GET /users/me
- * - "Refresh status" triggers manual query invalidation
- * - "Return to Discover" is a Next.js Link
- * - Success toast and navigation invalidation once isVerified flips true
- */
 export default function VerificationPendingPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const [showToast, setShowToast] = useState(false);
 
-  // TanStack Query with 30s polling per Milestone 2 task 5
   const { data: user, refetch, isRefetching } = useUsersQuery();
 
   useEffect(() => {
-    // Override query refetchInterval dynamically on this screen
     qc.setQueryDefaults(["users", "me"], { refetchInterval: 30000 });
   }, [qc]);
 
@@ -32,9 +22,7 @@ export default function VerificationPendingPage() {
     if (user?.isVerified || user?.teacherVerificationStatus === "APPROVED") {
       setShowToast(true);
       qc.invalidateQueries({ queryKey: ["users", "me"] });
-      const timer = setTimeout(() => {
-        router.push("/");
-      }, 2500);
+      const timer = setTimeout(() => router.push("/"), 2500);
       return () => clearTimeout(timer);
     }
   }, [user?.isVerified, user?.teacherVerificationStatus, qc, router]);
@@ -45,34 +33,38 @@ export default function VerificationPendingPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-10 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[var(--canvas)] px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-lg">
         {showToast && (
-          <div className="mb-6 rounded-2xl border border-green-700/60 bg-green-900/30 p-4 text-center text-sm font-semibold text-green-300 animate-bounce">
-            🎉 Your account has been verified! Redirecting to Discover…
+          <div className="mb-6 rounded-[12px] border border-[#2f9e52]/40 bg-[#e3f4e8] p-4 text-center text-[12.5px] font-semibold text-[#2f9e52]">
+            Your account has been verified! Redirecting to Discover…
           </div>
         )}
 
-        <Card className="space-y-6 p-8 border-slate-700/80 bg-slate-900/80">
+        <div className="rounded-[16px] border border-[var(--line-soft)] bg-[var(--paper)] space-y-6 p-8">
           <div>
             <div className="flex items-center justify-between">
-              <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Verification pending</p>
-              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping" />
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--ink-soft)]">
+                Verification pending
+              </p>
+              <span className="flex h-2.5 w-2.5 rounded-full bg-[#c9973b] animate-ping" />
             </div>
-            <h1 className="mt-3 text-3xl font-semibold text-white">Your account is under review</h1>
+            <h1 className="mt-2 text-[24px] font-semibold text-[var(--ink)]">
+              Your account is under review
+            </h1>
           </div>
 
-          <p className="text-sm leading-6 text-slate-300">
+          <p className="text-[12.5px] leading-relaxed text-[var(--ink-soft)]">
             We are checking your verification status automatically every 30 seconds. You can still browse the platform in read-only mode while verification is pending.
           </p>
 
           {user && (
-            <div className="rounded-2xl bg-slate-950 p-4 text-xs space-y-1 text-slate-400">
-              <p><span className="text-slate-200 font-medium">Account:</span> {user.email}</p>
-              <p><span className="text-slate-200 font-medium">Role:</span> {user.role}</p>
+            <div className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--canvas)] p-4 space-y-1.5 text-[11.5px] text-[var(--ink-soft)]">
+              <p><span className="font-medium text-[var(--ink)]">Account:</span> {user.email}</p>
+              <p><span className="font-medium text-[var(--ink)]">Role:</span> {user.role}</p>
               <p>
-                <span className="text-slate-200 font-medium">Status:</span>{" "}
-                <span className="text-amber-400">Pending Approval</span>
+                <span className="font-medium text-[var(--ink)]">Status:</span>{" "}
+                <span className="text-[#c9973b]">Pending Approval</span>
               </p>
             </div>
           )}
@@ -85,7 +77,7 @@ export default function VerificationPendingPage() {
               {isRefetching ? "Checking…" : "Refresh status"}
             </Button>
           </div>
-        </Card>
+        </div>
       </div>
     </main>
   );

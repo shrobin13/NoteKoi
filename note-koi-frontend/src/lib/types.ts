@@ -63,24 +63,36 @@ export interface User {
   teacherVerificationStatus?: "PENDING_VERIFICATION" | "APPROVED";
 }
 
+export interface ResourceUploader {
+  id: string;
+  name?: string | null;
+  email?: string;
+  role: string;
+}
+
 export interface Resource {
   id: string;
   title: string;
-  description: string;
+  description?: string | null;
   type: ResourceType;
+  resourceType?: ResourceType;
   state: ResourceState;
+  displayStatus?: string;
   visibility: Visibility;
   deletionFlag?: boolean;
-  version: number;
-  contentHash: string;
-  uploader: Pick<User, "id" | "name" | "role">;
-  collegeId: string;
+  versionNumber?: number;
+  contentHash?: string | null;
+  uploader?: ResourceUploader | null;
+  collegeId?: string | null;
   courseId: string;
+  departmentId?: string;
   tags?: string[];
-  fileUrl?: string;
-  youtubeUrl?: string;
-  sessionId?: string;
+  fileUrl?: string | null;
+  youtubeUrl?: string | null;
+  sessionId?: string | null;
+  rootResourceId?: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // Notification fields match backend model: type, message, reason, isRead

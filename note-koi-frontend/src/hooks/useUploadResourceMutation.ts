@@ -1,14 +1,12 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createResource, uploadResourceFile } from "@/lib/api/resources";
-import type { ResourceType, UploaderRoleSnapshot, Visibility } from "@/lib/types";
+import { addResourceVersion, createResource, uploadResourceFile } from "@/lib/api/resources";
+import type { ResourceType, Visibility } from "@/lib/types";
 
 export interface UploadResourceInput {
   file?: File | null;
   youtubeUrl?: string;
-  uploaderId: string;
-  uploaderRoleSnapshot: UploaderRoleSnapshot;
   resourceType: ResourceType;
   title: string;
   description?: string | null;
@@ -18,6 +16,7 @@ export interface UploadResourceInput {
   sessionId?: string;
   visibility: Visibility;
   collegeId?: string;
+  versionOfId?: string | null;
 }
 
 export function useUploadResourceMutation() {
@@ -25,9 +24,13 @@ export function useUploadResourceMutation() {
 
   return useMutation({
     mutationFn: async (input: UploadResourceInput) => {
+      // Add new version flow
+      if (input.versionOfId && input.file) {
+        return addResourceVersion(input.versionOfId, input.file);
+      }
+
+      // Standard create flow
       const payload = {
-        uploaderId: input.uploaderId,
-        uploaderRoleSnapshot: input.uploaderRoleSnapshot,
         resourceType: input.resourceType,
         title: input.title,
         description: input.description ?? null,
@@ -48,7 +51,7 @@ export function useUploadResourceMutation() {
         payload.contentHash = uploadResponse.contentHash;
       }
 
-      return createResource(payload);
+      return createResource(payload as Parameters<typeof createResource>[0]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resources"] });

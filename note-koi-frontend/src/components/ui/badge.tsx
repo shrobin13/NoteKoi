@@ -7,30 +7,39 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   icon?: ReactNode;
 }
 
+const toneToCssClass: Record<string, string> = {
+  pending:    "badge-tone-pending",
+  review:     "badge-tone-review",
+  approved:   "badge-tone-approved",
+  rejected:   "badge-tone-rejected",
+  superseded: "badge-tone-super",
+  deletion:   "badge-tone-deletion",
+  deleted:    "badge-tone-deleted",
+  platform:   "badge-tone-platform",
+  college:    "badge-tone-college",
+  role:       "badge-tone-role",
+  // legacy aliases
+  amber:  "badge-tone-pending",
+  blue:   "badge-tone-review",
+  green:  "badge-tone-approved",
+  red:    "badge-tone-rejected",
+  violet: "badge-tone-platform",
+  slate:  "badge-tone-super",
+  orange: "badge-tone-deletion",
+  gray:   "badge-tone-super",
+  indigo: "badge-tone-platform",
+};
+
 export function Badge({ className, variant = "state", tone, icon, ...props }: BadgeProps) {
-  const variantTone = {
-    state: "slate",
-    visibility: "violet",
-    role: "indigo"
-  } as const;
-
-  const toneClasses = {
-    slate: "bg-slate-700 text-slate-100",
-    indigo: "bg-indigo-600 text-white",
-    green: "bg-emerald-600 text-white",
-    amber: "bg-amber-500 text-slate-950",
-    red: "bg-rose-600 text-white",
-    violet: "bg-violet-600 text-white",
-    gray: "bg-slate-600 text-white"
-  } as const;
-
-  const resolvedTone = tone || variantTone[variant] || "slate";
+  const resolvedTone =
+    tone ||
+    (variant === "role" ? "role" : variant === "visibility" ? "college" : "slate");
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
-        toneClasses[resolvedTone as keyof typeof toneClasses],
+        "inline-flex items-center gap-1.5 rounded-[20px] px-2 py-0.5 text-[10px] font-bold tracking-[0.02em]",
+        toneToCssClass[resolvedTone] ?? "badge-tone-super",
         className
       )}
       {...props}

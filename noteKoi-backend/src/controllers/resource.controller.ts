@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { AuthenticatedRequest } from "../middlewares/authenticate.js";
 import { created, ok } from "../helpers/response.js";
+import { AppError } from "../errors/app.error.js";
 import { createResourceRecord } from "../services/resource.service.js";
 import { getResourceById } from "../services/resource.service.js";
 import { updateResourceMetadata } from "../services/resource.service.js";
@@ -54,48 +55,32 @@ export async function listResourcesHandler(req: Request, res: Response, next: Ne
     const includeOtherColleges = req.query.includeOtherColleges === "true" || req.query.includeOtherColleges === "1";
 
     const result = await (await import("../services/resource.service.js")).listResources(actor, { q, resourceType, sessionId, visibility, includeOtherColleges }, page, limit);
-    return res.json(ok(result.data, result.meta));
+    return res.json(ok({ items: result.data, ...result.meta }));
   } catch (error) {
     return next(error);
   }
 }
 
+/**
+ * Pure file-upload handler — stores the file and returns { fileUrl, contentHash }.
+ * The caller then POSTs to /resources with the returned fileUrl to create the record.
+ */
 export async function createResourceUploadHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const uploadReq = req as RequestWithUpload;
     const file = uploadReq.file;
-    const auth = (uploadReq.user ?? null) as { userId?: string; role?: string } | null;
-    const body = req.body as Record<string, unknown>;
 
-    const tagsRaw = body?.tags;
-    const tags = typeof tagsRaw === "string" ? tagsRaw.split(",").map((s) => s.trim()).filter(Boolean) : Array.isArray(tagsRaw) ? tagsRaw : [];
-
-    const relativePath = file ? path.relative(process.cwd(), file.path) : undefined;
-    const fileUrl = relativePath ? `/${relativePath.replaceAll(path.sep, "/")}` : undefined;
-
-    let contentHash: string | null = null;
-    if (file) {
-      const buf = await fs.readFile(file.path);
-      contentHash = crypto.createHash("sha256").update(buf).digest("hex");
+    if (!file) {
+      throw new AppError("No file uploaded — include a 'file' field in the multipart form", 400, "FILE_REQUIRED");
     }
 
-    const input: CreateResourceRecordInput = {
-      resourceType: body.resourceType as CreateResourceRecordInput["resourceType"],
-      title: body.title as string,
-      description: (body.description as string) ?? null,
-      tags,
-      courseId: body.courseId as string,
-      departmentId: body.departmentId as string,
-      sessionId: (body.sessionId as string) ?? undefined,
-      visibility: (body.visibility as CreateResourceRecordInput["visibility"]) ?? undefined,
-      collegeId: (body.collegeId as string) ?? undefined,
-      fileUrl: fileUrl ?? null,
-      youtubeUrl: (body.youtubeUrl as string) ?? null,
-      contentHash,
-    };
+    const relativePath = path.relative(process.cwd(), file.path);
+    const fileUrl = `/${relativePath.replaceAll(path.sep, "/")}`;
 
-    const resource = await createResourceRecord(input, auth ?? undefined);
-    return res.status(201).json(created(resource));
+    const buf = await fs.readFile(file.path);
+    const contentHash = crypto.createHash("sha256").update(buf).digest("hex");
+
+    return res.status(200).json(ok({ fileUrl, contentHash }));
   } catch (error) {
     return next(error);
   }
@@ -108,7 +93,7 @@ export async function getMyUploadsHandler(req: Request, res: Response, next: Nex
     const actor = ((req as RequestWithUser).user ?? {}) as { userId?: string };
 
     const result = await (await import("../services/resource.service.js")).listMyUploads(actor, page ?? 1, limit ?? 20);
-    return res.json(ok(result.data, result.meta));
+    return res.json(ok({ items: result.data, ...result.meta }));
   } catch (error) {
     return next(error);
   }

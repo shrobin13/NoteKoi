@@ -25,7 +25,6 @@ router.post("/", authorize(["PLATFORM_ADMIN"]), validate({ body: createCollegeSc
 router.patch("/:id", authorize(["PLATFORM_ADMIN"]), validate({ params: idParamSchema, body: updateCollegeSchema }), updateCollegeHandler);
 router.get(
   "/:collegeId/departments",
-  authorize(["PLATFORM_ADMIN"]),
   validate({ params: collegeIdParamSchema }),
   listCollegeDepartmentsHandler,
 );

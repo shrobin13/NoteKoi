@@ -18,10 +18,6 @@ const REASONS: { value: ReportReason; label: string; description: string }[] = [
   { value: "PLAGIARISED", label: "Plagiarised / Copyright Violation", description: "Copied material uploaded without authorization." },
 ];
 
-/**
- * Report Resource Dialog — Milestone 3 task 6 / wirefram-resolution.md §4 B.10
- * Reasons: Incorrect, Spam, Plagiarised. POST /resources/:id/report
- */
 export function ReportDialog({ open, resourceId, onClose }: ReportDialogProps) {
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
   const [success, setSuccess] = useState(false);
@@ -49,7 +45,7 @@ export function ReportDialog({ open, resourceId, onClose }: ReportDialogProps) {
     >
       {success ? (
         <div className="mt-4 space-y-4">
-          <div className="rounded-2xl border border-green-700/60 bg-green-900/20 p-4 text-sm text-green-300">
+          <div className="rounded-[8px] border border-[#2f9e52]/40 bg-[#e3f4e8] px-4 py-3 text-[12px] text-[#2f9e52]">
             Thank you. Your report has been submitted to the moderation team for review.
           </div>
           <div className="flex justify-end">
@@ -63,10 +59,10 @@ export function ReportDialog({ open, resourceId, onClose }: ReportDialogProps) {
               <label
                 key={r.value}
                 onClick={() => setSelectedReason(r.value)}
-                className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${
+                className={`flex cursor-pointer items-start gap-3 rounded-[8px] border p-3 transition ${
                   selectedReason === r.value
-                    ? "border-indigo-500 bg-indigo-950/40"
-                    : "border-slate-800 bg-slate-950/60 hover:border-slate-700"
+                    ? "border-[var(--accent)] bg-[var(--ph)]"
+                    : "border-[var(--line-soft)] hover:border-[var(--line)]"
                 }`}
               >
                 <input
@@ -75,23 +71,23 @@ export function ReportDialog({ open, resourceId, onClose }: ReportDialogProps) {
                   value={r.value}
                   checked={selectedReason === r.value}
                   onChange={() => setSelectedReason(r.value)}
-                  className="mt-1 accent-indigo-500"
+                  className="mt-0.5"
                 />
                 <div>
-                  <p className="font-medium text-white">{r.label}</p>
-                  <p className="mt-0.5 text-xs text-slate-400">{r.description}</p>
+                  <p className="text-[12px] font-semibold text-[var(--ink)]">{r.label}</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--ink-soft)]">{r.description}</p>
                 </div>
               </label>
             ))}
           </div>
 
           {reportMutation.error && (
-            <p className="rounded-2xl border border-rose-500 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+            <p className="rounded-[8px] bg-[#fbe6e6] px-3 py-2 text-[12px] text-[#d24545]">
               Failed to submit report. Please try again.
             </p>
           )}
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={handleClose}>Cancel</Button>
             <Button
               variant="destructive"

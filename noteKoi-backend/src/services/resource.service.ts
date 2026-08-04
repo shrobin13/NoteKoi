@@ -10,10 +10,12 @@ type ResourceInputWithExtras = {
   uploaderRoleSnapshot?: string | null;
 };
 
-type ResourceWithDeletionRequests = Resource & { deletionRequests?: DeletionRequest[] };
+type ResourceWithRelations = Resource & {
+  deletionRequests?: DeletionRequest[];
+  uploader?: { id: string; email: string; name?: string | null; role: string } | null;
+};
 
-function mapResourceToDto(resource: ResourceWithDeletionRequests) {
-  // Derived display label per backend-workprocess.md Section 3.9
+function mapResourceToDto(resource: ResourceWithRelations) {
   let displayStatus: string = resource.state;
 
   if (resource.state === $Enums.ResourceState.IN_REVIEW && resource.deletionFlag) {
@@ -31,16 +33,32 @@ function mapResourceToDto(resource: ResourceWithDeletionRequests) {
   return {
     id: resource.id,
     title: resource.title,
+    description: resource.description ?? null,
+    // "type" is the frontend-canonical name; backend model uses "resourceType"
+    type: resource.resourceType,
     resourceType: resource.resourceType,
+    tags: resource.tags ?? [],
     visibility: resource.visibility,
     state: resource.state,
     displayStatus,
     deletionFlag: resource.deletionFlag,
     fileUrl: resource.fileUrl,
     youtubeUrl: resource.youtubeUrl,
+    contentHash: resource.contentHash ?? null,
     courseId: resource.courseId,
     departmentId: resource.departmentId,
-    sessionId: resource.sessionId,
+    sessionId: resource.sessionId ?? null,
+    collegeId: resource.collegeId ?? null,
+    versionNumber: resource.versionNumber ?? 1,
+    rootResourceId: resource.rootResourceId ?? null,
+    uploader: resource.uploader
+      ? {
+          id: resource.uploader.id,
+          name: resource.uploader.name ?? null,
+          email: resource.uploader.email,
+          role: resource.uploader.role,
+        }
+      : { id: resource.uploaderId, name: null, email: "", role: "STUDENT" },
     createdAt: resource.createdAt,
     updatedAt: resource.updatedAt,
   };
@@ -178,12 +196,15 @@ export async function createResourceRecord(input: {
 export async function listResources(actor: { userId?: string; role?: string; collegeId?: string | null; departmentId?: string | null; sessionId?: string | null } | null, filters: { q?: string; resourceType?: string; sessionId?: string; visibility?: string; includeOtherColleges?: boolean }, page = 1, limit = 20) {
   const skip = (page - 1) * limit;
   const where: Record<string, unknown> = { state: $Enums.ResourceState.APPROVED };
+  const andClauses: Array<Record<string, unknown>> = [];
 
   if (filters.q) {
-    where.OR = [
-      { title: { contains: filters.q, mode: "insensitive" } },
-      { description: { contains: filters.q, mode: "insensitive" } },
-    ];
+    andClauses.push({
+      OR: [
+        { title: { contains: filters.q, mode: "insensitive" } },
+        { description: { contains: filters.q, mode: "insensitive" } },
+      ],
+    });
   }
 
   if (filters.resourceType) {
@@ -200,23 +221,29 @@ export async function listResources(actor: { userId?: string; role?: string; col
 
   const role = actor?.role;
   if (role === $Enums.Role.PLATFORM_ADMIN) {
-    // platform admin sees all approved resources
+    // platform admin sees all approved resources — no visibility constraint
   } else if (role === $Enums.Role.SUB_ADMIN) {
-    where.OR = [
-      { visibility: $Enums.Visibility.PLATFORM },
-      { visibility: $Enums.Visibility.COLLEGE, collegeId: actor?.collegeId ?? null },
-    ];
+    andClauses.push({
+      OR: [
+        { visibility: $Enums.Visibility.PLATFORM },
+        { visibility: $Enums.Visibility.COLLEGE, collegeId: actor?.collegeId ?? null },
+      ],
+    });
   } else if (role === $Enums.Role.STUDENT || role === $Enums.Role.TEACHER) {
-    const baseConditions: Array<Record<string, unknown>> = [{ visibility: $Enums.Visibility.PLATFORM }];
+    const visibilityOptions: Array<Record<string, unknown>> = [{ visibility: $Enums.Visibility.PLATFORM }];
     if (actor?.collegeId) {
-      baseConditions.push({ visibility: $Enums.Visibility.COLLEGE, collegeId: actor.collegeId });
+      visibilityOptions.push({ visibility: $Enums.Visibility.COLLEGE, collegeId: actor.collegeId });
       if (filters.includeOtherColleges) {
-        baseConditions.push({ visibility: $Enums.Visibility.COLLEGE });
+        visibilityOptions.push({ visibility: $Enums.Visibility.COLLEGE });
       }
     }
-    where.OR = baseConditions;
+    andClauses.push({ OR: visibilityOptions });
   } else {
     where.visibility = $Enums.Visibility.PLATFORM;
+  }
+
+  if (andClauses.length > 0) {
+    where.AND = andClauses;
   }
 
   const { items, total } = await (await import("../repositories/resource.repository.js")).findResourcesByFilters(where, skip, limit);
@@ -259,7 +286,7 @@ export async function getResourceById(actor: { userId?: string; role?: string; c
     throw new AppError("Resource not found", 404, "NOT_FOUND");
   }
 
-  const typedResource = resource as ResourceWithDeletionRequests;
+  const typedResource = resource as ResourceWithRelations;
 
   // Uploader may always view their own resource
   if (actor?.userId && actor.userId === resource.uploaderId) {
