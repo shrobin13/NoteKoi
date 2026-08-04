@@ -6,7 +6,7 @@ import { findResourceById } from "../repositories/resource.repository.js";
 import { validate } from "../middlewares/validate.js";
 import { createResourceSchema, listResourcesQuerySchema, myUploadsQuerySchema, resourceIdParamSchema, viewResourceQuerySchema, resourceMetadataSchema, resourceReassignSchema, resourceVersionSchema } from "../validators/resource.validator.js";
 import { authenticate } from "../middlewares/authenticate.js";
-import { upload } from "../storage/multerConfig.js";
+import { uploadSingleFile } from "../storage/multerConfig.js";
 
 const router: express.Router = express.Router();
 
@@ -14,7 +14,7 @@ router.get("/resources", validate({ query: listResourcesQuerySchema }), listReso
 router.get("/resources/search", validate({ query: listResourcesQuerySchema }), listResourcesHandler);
 router.post("/resources", authenticate, validate({ body: createResourceSchema }), createResourceHandler);
 // multipart upload endpoint: field `file` expected
-router.post("/resources/upload", authenticate, upload.single("file"), createResourceUploadHandler);
+router.post("/resources/upload", authenticate, uploadSingleFile, createResourceUploadHandler);
 
 // My uploads listing (paginated)
 router.get("/resources/my-uploads", authenticate, validate({ query: myUploadsQuerySchema }), getMyUploadsHandler);

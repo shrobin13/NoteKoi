@@ -97,6 +97,20 @@ export function findPendingStudentsByCollege(collegeId: string, departmentId?: s
       ...(departmentId ? { departmentId } : {}),
       ...(sessionId ? { sessionId } : {}),
     },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      regNo: true,
+      createdAt: true,
+      college: {
+        select: {
+          name: true,
+        },
+      },
+      departmentId: true,
+      sessionId: true,
+    },
     orderBy: { createdAt: "desc" },
   });
 }

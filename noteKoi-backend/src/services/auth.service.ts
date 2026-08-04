@@ -8,6 +8,7 @@ import { env } from "../config/env.js";
 
 function buildUserDto(user: {
   id: string;
+  name?: string | null;
   email: string;
   role: string;
   collegeId?: string | null;
@@ -20,6 +21,7 @@ function buildUserDto(user: {
 }) {
   return {
     id: user.id,
+    name: user.name ?? null,
     email: user.email,
     role: user.role,
     collegeId: user.collegeId,

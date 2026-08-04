@@ -1,8 +1,9 @@
-import type { Request } from "express";
-import multer, { type FileFilterCallback } from "multer";
+import type { NextFunction, Request, Response } from "express";
+import multer, { type FileFilterCallback, MulterError } from "multer";
 import path from "path";
 import fs from "fs";
 import { env, allowedMimeTypes } from "../config/env.js";
+import { AppError } from "../errors/app.error.js";
 
 const uploadsRoot = path.resolve(process.cwd(), "storage", "uploads");
 
@@ -39,3 +40,35 @@ export const upload = multer({
 });
 
 export const uploadsRootPath = uploadsRoot;
+
+export function mapMulterError(err: unknown): AppError {
+  if (err instanceof MulterError) {
+    switch (err.code) {
+      case "LIMIT_FILE_SIZE":
+        return new AppError("File too large", 413, "FILE_TOO_LARGE");
+      case "LIMIT_FILE_COUNT":
+        return new AppError("Too many files uploaded", 400, "FILE_COUNT_EXCEEDED");
+      case "LIMIT_PART_COUNT":
+        return new AppError("Too many parts in upload request", 400, "UPLOAD_PART_COUNT_EXCEEDED");
+      case "LIMIT_UNEXPECTED_FILE":
+        return new AppError("Unexpected file field", 400, "UNEXPECTED_FILE_FIELD");
+      default:
+        return new AppError("Upload failed", 400, "UPLOAD_FAILED");
+    }
+  }
+
+  if (err instanceof Error && err.message === "Invalid file type") {
+    return new AppError("Unsupported file type", 415, "INVALID_FILE_TYPE");
+  }
+
+  return new AppError("Upload failed", 400, "UPLOAD_FAILED");
+}
+
+export function uploadSingleFile(req: Request, res: Response, next: NextFunction) {
+  upload.single("file")(req, res, (err) => {
+    if (err) {
+      return next(mapMulterError(err));
+    }
+    return next();
+  });
+}

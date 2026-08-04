@@ -43,9 +43,24 @@ export async function createResourceHandler(req: Request, res: Response, next: N
   }
 }
 
+async function getOptionalActor(req: Request) {
+  try {
+    const { ACCESS_TOKEN_COOKIE } = await import("../config/cookies.js");
+    const { verifyAccessToken } = await import("../auth/jwt.js");
+    const token = req.cookies?.[ACCESS_TOKEN_COOKIE];
+    if (token && typeof token === "string") {
+      return verifyAccessToken(token);
+    }
+  } catch {
+    // Ignore token verification issues and treat as guest.
+  }
+
+  return null;
+}
+
 export async function listResourcesHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const actor = ((req as RequestWithUser).user ?? null) as { userId?: string; role?: string; collegeId?: string | null; departmentId?: string | null; sessionId?: string | null } | null;
+    const actor = (await getOptionalActor(req)) as { userId?: string; role?: string; collegeId?: string | null; departmentId?: string | null; sessionId?: string | null } | null;
     const page = typeof req.query.page === "string" ? Number(req.query.page) : 1;
     const limit = typeof req.query.limit === "string" ? Number(req.query.limit) : 20;
     const q = typeof req.query.q === "string" ? req.query.q : undefined;

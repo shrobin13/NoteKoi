@@ -29,6 +29,24 @@ function buildUserDto(user: {
   };
 }
 
+function buildPendingStudentDto(user: {
+  id: string;
+  name?: string | null;
+  email: string;
+  regNo?: string | null;
+  createdAt: Date;
+  college?: { name?: string | null } | null;
+}) {
+  return {
+    userId: user.id,
+    name: user.name ?? undefined,
+    email: user.email,
+    regNo: user.regNo ?? "",
+    college: user.college?.name ?? undefined,
+    createdAt: user.createdAt,
+  };
+}
+
 export async function listStudentVerificationsForCr(user: { userId: string; collegeId?: string | null }) {
   const assignments = await findActiveCrCoCrAssignmentsForUser(user.userId);
   if (assignments.length === 0) {
@@ -37,11 +55,11 @@ export async function listStudentVerificationsForCr(user: { userId: string; coll
 
   const pendingStudents = await Promise.all(
     assignments.map((assignment) =>
-      findPendingStudentsByCollege(user.collegeId ?? "", assignment.departmentId, assignment.sessionId),
+      findPendingStudentsByCollege(assignment.collegeId ?? user.collegeId ?? "", assignment.departmentId, assignment.sessionId),
     ),
   );
 
-  return pendingStudents.flat().map(buildUserDto);
+  return pendingStudents.flat().map(buildPendingStudentDto);
 }
 
 export async function listStudentVerificationsForSubAdmin(user: { collegeId?: string | null }) {
@@ -60,7 +78,7 @@ export async function listStudentVerificationsForSubAdmin(user: { collegeId?: st
     }
   }
 
-  return scopedStudents.map(buildUserDto);
+  return scopedStudents.map(buildPendingStudentDto);
 }
 
 export async function approveStudentVerification(actor: { userId: string; collegeId?: string | null }, targetUserId: string) {
